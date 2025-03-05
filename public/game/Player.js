@@ -26,6 +26,8 @@ export class Player {
 	}
 
 	createMesh() {
+		console.log('DEBUG - Player createMesh called');
+
 		// Create player geometry - slightly larger for better visibility
 		const geometry = new THREE.BoxGeometry(1.0, 1.0, 1.0);
 
@@ -38,6 +40,14 @@ export class Player {
 			roughness: 0.2,
 		});
 
+		console.log('DEBUG - Player material settings:', {
+			color: material.color.getHexString(),
+			emissive: material.emissive.getHexString(),
+			emissiveIntensity: material.emissiveIntensity,
+			transparent: material.transparent,
+			opacity: material.opacity,
+		});
+
 		// Create player mesh
 		this.mesh = new THREE.Mesh(geometry, material);
 		this.mesh.position.y = this.size * 0.7; // Ensure player is above the platform
@@ -45,6 +55,13 @@ export class Player {
 		this.mesh.position.z = this.position.z;
 		this.mesh.castShadow = true;
 		this.mesh.receiveShadow = true;
+
+		console.log('DEBUG - Player mesh created:', {
+			position: this.mesh.position,
+			scale: this.mesh.scale,
+			visible: this.mesh.visible,
+			id: this.mesh.id,
+		});
 
 		// Add wireframe overlay for neon grid effect with much thicker lines
 		const wireframe = new THREE.LineSegments(
@@ -61,6 +78,11 @@ export class Player {
 
 		// Add to scene
 		this.game.scene.add(this.mesh);
+
+		console.log('DEBUG - Player added to scene:', {
+			sceneChildren: this.game.scene.children.length,
+			playerInScene: this.game.scene.children.includes(this.mesh),
+		});
 	}
 
 	addGlowEffect() {

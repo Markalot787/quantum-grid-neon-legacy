@@ -56,6 +56,7 @@ export class Game {
 	init() {
 		// Create scene
 		this.scene = new THREE.Scene();
+		console.log('DEBUG - Scene created');
 
 		// Create camera with better angle for platform visibility
 		this.camera = new THREE.PerspectiveCamera(
@@ -69,6 +70,13 @@ export class Game {
 		this.camera.position.set(0, 18, 25); // Higher and further back for better platform view
 		this.camera.lookAt(0, 0, 7); // Look at the middle of the platform
 
+		console.log('DEBUG - Camera setup:', {
+			position: this.camera.position,
+			rotation: this.camera.rotation,
+			fov: this.camera.fov,
+			lookingAt: new THREE.Vector3(0, 0, 7),
+		});
+
 		// Update animation base position to match our new better position
 		this.cameraAnimation.basePosition = new THREE.Vector3(0, 18, 25);
 		this.cameraAnimation.lookAtPosition = new THREE.Vector3(0, 0, 7);
@@ -77,18 +85,21 @@ export class Game {
 		this.setupRenderer();
 		this.setupSkybox();
 		this.setupPostProcessing();
-
-		// Add lights
 		this.setupLights();
 
-		// Initialize components
-		this.ui = new UI(this);
-		this.level = new Level(this);
-		this.player = new Player(this);
+		console.log('DEBUG - Setup complete');
 
-		// Add event listeners
-		window.addEventListener('resize', () => this.onWindowResize());
-		document.addEventListener('keydown', (e) => this.handleKeyDown(e));
+		// Initialize player and level
+		this.player = new Player(this);
+		this.level = new Level(this);
+		this.ui = new UI(this);
+		this.paymentModal = new PaymentModal(this);
+
+		console.log('DEBUG - All objects initialized');
+
+		// Setup event listeners
+		window.addEventListener('resize', this.onWindowResize.bind(this));
+		document.addEventListener('keydown', this.handleKeyDown.bind(this));
 
 		// Initialize Stripe
 		if (typeof Stripe !== 'undefined') {
@@ -97,6 +108,9 @@ export class Game {
 
 		// Show start screen
 		this.ui.showStartScreen();
+
+		// Start animation loop
+		this.animate();
 	}
 
 	setupRenderer() {
@@ -691,11 +705,25 @@ export class Game {
 	}
 
 	animate() {
-		requestAnimationFrame(() => this.animate());
-		const delta = this.clock.getDelta();
-		this.update(delta);
+		console.log('DEBUG - Animate frame');
+		requestAnimationFrame(this.animate.bind(this));
 
-		// Use composer instead of renderer if available
+		// Get delta time
+		const delta = this.clock.getDelta();
+
+		// Update game state
+		if (!this.paused) {
+			this.update(delta);
+		}
+
+		console.log('DEBUG - Rendering scene:', {
+			cameraPosition: this.camera.position,
+			platformVisible: this.level?.platformMesh?.visible,
+			playerVisible: this.player?.mesh?.visible,
+			sceneChildrenCount: this.scene.children.length,
+		});
+
+		// Render scene
 		if (this.composer) {
 			this.composer.render();
 		} else {

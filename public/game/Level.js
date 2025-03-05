@@ -24,6 +24,8 @@ export class Level {
 		const width = this.game.settings.stageWidth;
 		const length = this.game.settings.stageLength;
 
+		console.log('DEBUG - Platform dimensions:', { width, length });
+
 		// Create grid texture with much brighter colors
 		const gridTexture = this.createGridTexture();
 
@@ -37,6 +39,15 @@ export class Level {
 			map: gridTexture,
 		});
 
+		console.log('DEBUG - Platform material settings:', {
+			color: material.color.getHexString(),
+			emissive: material.emissive.getHexString(),
+			emissiveIntensity: material.emissiveIntensity,
+			transparent: material.transparent,
+			opacity: material.opacity,
+			visible: material.visible,
+		});
+
 		// Create platform mesh
 		this.platformMesh = new THREE.Mesh(
 			new THREE.BoxGeometry(width, 1, length),
@@ -44,7 +55,21 @@ export class Level {
 		);
 		this.platformMesh.position.set(0, -0.5, length / 2);
 		this.platformMesh.receiveShadow = true;
+
+		console.log('DEBUG - Platform mesh created:', {
+			position: this.platformMesh.position,
+			rotation: this.platformMesh.rotation,
+			scale: this.platformMesh.scale,
+			visible: this.platformMesh.visible,
+			id: this.platformMesh.id,
+		});
+
 		this.game.scene.add(this.platformMesh);
+
+		console.log('DEBUG - Platform added to scene:', {
+			sceneChildren: this.game.scene.children.length,
+			platformInScene: this.game.scene.children.includes(this.platformMesh),
+		});
 
 		// Add highly visible grid lines
 		this.addGridLines(width, length);
