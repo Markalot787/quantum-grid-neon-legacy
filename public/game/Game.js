@@ -272,9 +272,9 @@ export class Game {
 		} else if (key === 's' || key === 'arrowdown') {
 			this.player.move('backward');
 		} else if (key === 'a' || key === 'arrowleft') {
-			this.player.move('left');
-		} else if (key === 'd' || key === 'arrowright') {
 			this.player.move('right');
+		} else if (key === 'd' || key === 'arrowright') {
+			this.player.move('left');
 		}
 
 		// Mark/Capture cube
