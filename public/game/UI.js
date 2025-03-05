@@ -6,6 +6,7 @@ export class UI {
 		this.scoreElement = document.getElementById('score');
 		this.levelElement = document.getElementById('level');
 		this.cubesLeftElement = document.getElementById('cubes-left');
+		this.livesElement = document.getElementById('lives');
 
 		// Get screen elements
 		this.startScreen = document.getElementById('start-screen');
@@ -52,6 +53,29 @@ export class UI {
 		this.cubesLeftElement.textContent = `Cubes: ${count}`;
 	}
 
+	updateLives(lives) {
+		if (this.livesElement) {
+			// Clear previous hearts
+			this.livesElement.innerHTML = '';
+
+			// Add heart icons for each life
+			for (let i = 0; i < lives; i++) {
+				const heartIcon = document.createElement('span');
+				heartIcon.className = 'heart-icon';
+				heartIcon.innerHTML = '❤️';
+				this.livesElement.appendChild(heartIcon);
+			}
+
+			// Add empty hearts for lost lives
+			for (let i = lives; i < 3; i++) {
+				const emptyHeartIcon = document.createElement('span');
+				emptyHeartIcon.className = 'heart-icon empty';
+				emptyHeartIcon.innerHTML = '🖤';
+				this.livesElement.appendChild(emptyHeartIcon);
+			}
+		}
+	}
+
 	showGameOverScreen(finalScore) {
 		this.finalScoreElement.textContent = finalScore;
 		this.gameOverScreen.style.display = 'flex';
@@ -72,6 +96,9 @@ export class UI {
 	showPaymentModal() {
 		this.paymentModal.style.display = 'flex';
 
+		// Clear previous buttons
+		this.paymentButtonContainer.innerHTML = '';
+
 		// Initialize Stripe payment button
 		if (this.game.stripe) {
 			const checkoutButton = document.createElement('button');
@@ -83,6 +110,22 @@ export class UI {
 				this.game.handlePayment();
 			});
 		}
+
+		// Add cancel button
+		const cancelButton = document.createElement('button');
+		cancelButton.id = 'cancel-payment-button';
+		cancelButton.textContent = 'Cancel';
+		cancelButton.style.backgroundColor = 'transparent';
+		cancelButton.style.color = '#ccc';
+		cancelButton.style.border = '2px solid #ccc';
+		this.paymentButtonContainer.appendChild(cancelButton);
+
+		// Add event listener to cancel button
+		cancelButton.addEventListener('click', () => {
+			this.hidePaymentModal();
+			this.hideGameOverScreen();
+			this.game.restartGame();
+		});
 	}
 
 	hidePaymentModal() {

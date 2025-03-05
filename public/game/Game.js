@@ -24,13 +24,15 @@ export class Game {
 		this.paused = false;
 		this.markedTile = null;
 		this.activatedAdvantage = null;
+		this.lives = 3;
+		this.paid = false;
 
 		// Settings
 		this.settings = {
-			stageWidth: 5,
-			stageLength: 16,
+			stageWidth: 10,
+			stageLength: 15,
 			cubeSpeed: 2.0,
-			initialCubeCount: 12,
+			initialCubeCount: 15,
 		};
 
 		// Camera animation properties
@@ -46,6 +48,9 @@ export class Game {
 		// Post-processing properties
 		this.composer = null;
 		this.bloomPass = null;
+
+		// Initialize the game
+		this.init();
 	}
 
 	init() {
@@ -517,10 +522,12 @@ export class Game {
 		this.gameOver = false;
 		this.gameStarted = true;
 		this.playCount++;
+		this.lives = 3;
 
 		// Update UI
 		this.ui.updateScore(this.score);
 		this.ui.updateLevel(this.currentLevel);
+		this.ui.updateLives(this.lives);
 
 		// Start the game loop
 		this.animate();
@@ -541,9 +548,30 @@ export class Game {
 	}
 
 	endGame() {
-		this.gameOver = true;
-		this.gameStarted = false;
-		this.ui.showGameOverScreen(this.score);
+		this.lives--;
+		this.ui.updateLives(this.lives);
+
+		if (this.lives <= 0) {
+			this.gameOver = true;
+			this.gameStarted = false;
+
+			// First show game over screen
+			this.ui.showGameOverScreen(this.score);
+
+			// Then show payment modal if play count is high enough
+			if (this.playCount >= 3 && !this.paid) {
+				setTimeout(() => {
+					this.ui.showPaymentModal();
+				}, 1500);
+			}
+		} else {
+			// Player still has lives left, reset position and continue
+			this.player.resetPosition();
+		}
+	}
+
+	cancelPayment() {
+		this.ui.hidePaymentModal();
 	}
 
 	handlePayment() {
