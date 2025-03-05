@@ -32,12 +32,25 @@ export class Game {
 			cubeSpeed: 2.0,
 			initialCubeCount: 12,
 		};
+
+		// Camera animation properties
+		this.cameraAnimation = {
+			active: false,
+			speed: 0.5,
+			amplitude: 5,
+			angle: 0,
+			basePosition: new THREE.Vector3(0, 20, 30),
+			lookAtPosition: new THREE.Vector3(0, 0, 0),
+		};
+
+		// Post-processing properties
+		this.composer = null;
+		this.bloomPass = null;
 	}
 
 	init() {
 		// Create scene
 		this.scene = new THREE.Scene();
-		this.scene.background = new THREE.Color(0x000000);
 
 		// Create camera
 		this.camera = new THREE.PerspectiveCamera(
@@ -46,56 +59,200 @@ export class Game {
 			0.1,
 			1000
 		);
-		this.camera.position.set(0, 8, -6);
-		this.camera.lookAt(0, 0, 8);
+		this.camera.position.copy(this.cameraAnimation.basePosition);
+		this.camera.lookAt(this.cameraAnimation.lookAtPosition);
 
 		// Create renderer
-		this.renderer = new THREE.WebGLRenderer({ antialias: true });
-		this.renderer.setSize(window.innerWidth, window.innerHeight);
-		this.renderer.shadowMap.enabled = true;
-		document.body.appendChild(this.renderer.domElement);
+		this.setupRenderer();
+		this.setupSkybox();
+		this.setupPostProcessing();
 
 		// Add lights
-		const ambientLight = new THREE.AmbientLight(0x404040, 1);
-		this.scene.add(ambientLight);
-
-		const directionalLight = new THREE.DirectionalLight(0xffffff, 1);
-		directionalLight.position.set(5, 10, 5);
-		directionalLight.castShadow = true;
-		this.scene.add(directionalLight);
+		this.setupLights();
 
 		// Initialize components
-		this.player = new Player(this);
-		this.level = new Level(this);
 		this.ui = new UI(this);
-
-		// Create platform
-		this.level.createPlatform();
-
-		// Start first level
-		this.startLevel(this.currentLevel);
+		this.level = new Level(this);
+		this.player = new Player(this);
 
 		// Add event listeners
 		window.addEventListener('resize', () => this.onWindowResize());
 		document.addEventListener('keydown', (e) => this.handleKeyDown(e));
 
-		// Initialize payment modal
-		this.paymentModal = new PaymentModal(this);
+		// Initialize Stripe
+		if (typeof Stripe !== 'undefined') {
+			this.stripe = Stripe('pk_test_your_stripe_key');
+		}
 
-		// Start game
-		this.gameStarted = true;
+		// Show start screen
+		this.ui.showStartScreen();
+	}
+
+	setupRenderer() {
+		this.renderer = new THREE.WebGLRenderer({ antialias: true });
+		this.renderer.setSize(window.innerWidth, window.innerHeight);
+		this.renderer.setClearColor(0x000000);
+		this.renderer.shadowMap.enabled = true;
+		document.body.appendChild(this.renderer.domElement);
+	}
+
+	setupSkybox() {
+		// Create a procedural skybox with a gradient and stars
+		const skyboxGeometry = new THREE.BoxGeometry(1000, 1000, 1000);
+
+		// Create materials for each face with a gradient from dark blue to black
+		const materialArray = [];
+
+		// Create a canvas for the texture
+		const createGradientTexture = () => {
+			const canvas = document.createElement('canvas');
+			canvas.width = 512;
+			canvas.height = 512;
+			const context = canvas.getContext('2d');
+
+			// Create gradient
+			const gradient = context.createLinearGradient(0, 0, 0, 512);
+			gradient.addColorStop(0, '#000000');
+			gradient.addColorStop(1, '#0a0a2a');
+
+			// Fill with gradient
+			context.fillStyle = gradient;
+			context.fillRect(0, 0, 512, 512);
+
+			// Add stars
+			for (let i = 0; i < 100; i++) {
+				const x = Math.random() * 512;
+				const y = Math.random() * 512;
+				const radius = Math.random() * 1.5;
+				const opacity = Math.random() * 0.8 + 0.2;
+
+				context.beginPath();
+				context.arc(x, y, radius, 0, Math.PI * 2);
+				context.fillStyle = `rgba(255, 255, 255, ${opacity})`;
+				context.fill();
+			}
+
+			return canvas;
+		};
+
+		// Create textures for each face
+		for (let i = 0; i < 6; i++) {
+			const texture = new THREE.CanvasTexture(createGradientTexture());
+			texture.wrapS = THREE.RepeatWrapping;
+			texture.wrapT = THREE.RepeatWrapping;
+
+			const material = new THREE.MeshBasicMaterial({
+				map: texture,
+				side: THREE.BackSide,
+			});
+
+			materialArray.push(material);
+		}
+
+		// Create skybox mesh
+		const skybox = new THREE.Mesh(skyboxGeometry, materialArray);
+		this.scene.add(skybox);
+	}
+
+	setupPostProcessing() {
+		// Import required modules
+		import(
+			'https://cdn.jsdelivr.net/npm/three@0.157.0/examples/jsm/postprocessing/EffectComposer.js'
+		).then((module) => {
+			const { EffectComposer } = module;
+			import(
+				'https://cdn.jsdelivr.net/npm/three@0.157.0/examples/jsm/postprocessing/RenderPass.js'
+			).then((module) => {
+				const { RenderPass } = module;
+				import(
+					'https://cdn.jsdelivr.net/npm/three@0.157.0/examples/jsm/postprocessing/UnrealBloomPass.js'
+				).then((module) => {
+					const { UnrealBloomPass } = module;
+
+					// Create composer
+					this.composer = new EffectComposer(this.renderer);
+
+					// Add render pass
+					const renderPass = new RenderPass(this.scene, this.camera);
+					this.composer.addPass(renderPass);
+
+					// Add bloom pass
+					const bloomParams = {
+						exposure: 1,
+						bloomStrength: 1.5,
+						bloomThreshold: 0.2,
+						bloomRadius: 0.5,
+					};
+
+					const bloomPass = new UnrealBloomPass(
+						new THREE.Vector2(window.innerWidth, window.innerHeight),
+						bloomParams.bloomStrength,
+						bloomParams.bloomRadius,
+						bloomParams.bloomThreshold
+					);
+					this.composer.addPass(bloomPass);
+					this.bloomPass = bloomPass;
+				});
+			});
+		});
+	}
+
+	setupLights() {
+		// Ambient light for base illumination
+		const ambientLight = new THREE.AmbientLight(0x111122, 0.4);
+		this.scene.add(ambientLight);
+
+		// Main directional light
+		const directionalLight = new THREE.DirectionalLight(0xffffff, 0.8);
+		directionalLight.position.set(5, 10, 7);
+		directionalLight.castShadow = true;
+
+		// Configure shadow properties
+		directionalLight.shadow.mapSize.width = 2048;
+		directionalLight.shadow.mapSize.height = 2048;
+		directionalLight.shadow.camera.near = 0.5;
+		directionalLight.shadow.camera.far = 50;
+		directionalLight.shadow.camera.left = -15;
+		directionalLight.shadow.camera.right = 15;
+		directionalLight.shadow.camera.top = 15;
+		directionalLight.shadow.camera.bottom = -15;
+
+		this.scene.add(directionalLight);
+
+		// Add colored point lights for neon effect
+		const colors = [0xff00ff, 0x00ffff, 0xffff00];
+		const positions = [
+			[-10, 5, 5],
+			[10, 5, -5],
+			[0, 5, 10],
+		];
+
+		for (let i = 0; i < colors.length; i++) {
+			const pointLight = new THREE.PointLight(colors[i], 0.6, 20);
+			pointLight.position.set(...positions[i]);
+			this.scene.add(pointLight);
+
+			// Add light helper for debugging (uncomment if needed)
+			// const helper = new THREE.PointLightHelper(pointLight, 0.5);
+			// this.scene.add(helper);
+		}
 	}
 
 	onWindowResize() {
 		this.camera.aspect = window.innerWidth / window.innerHeight;
 		this.camera.updateProjectionMatrix();
 		this.renderer.setSize(window.innerWidth, window.innerHeight);
+
+		// Update composer size if available
+		if (this.composer) {
+			this.composer.setSize(window.innerWidth, window.innerHeight);
+		}
 	}
 
-	handleKeyDown(event) {
-		if (this.gameOver) return;
+	handleKeyDown(e) {
+		if (this.paused || this.gameOver) return;
 
-		const key = event.key.toLowerCase();
+		const key = e.key.toLowerCase();
 
 		if (key === 'escape') {
 			this.paused = !this.paused;
@@ -127,6 +284,11 @@ export class Game {
 		// Activate advantage cube
 		if (key === 'r') {
 			this.activateAdvantage();
+		}
+
+		// Toggle camera animation
+		if (key === 'c') {
+			this.toggleCameraAnimation();
 		}
 	}
 
@@ -348,63 +510,81 @@ export class Game {
 		animate();
 	}
 
-	startLevel(levelNumber) {
-		// Reset state
-		this.markedTile = null;
-		this.activatedAdvantage = null;
-
-		// Configure level based on level number
-		this.settings.cubeSpeed = 1.5 + levelNumber * 0.25;
-		this.settings.initialCubeCount = 10 + levelNumber * 2;
-
-		// Generate level
-		this.level.generateLevel(levelNumber);
-
-		// Reset player position
-		this.player.resetPosition();
+	startGame() {
+		// Reset game state
+		this.score = 0;
+		this.currentLevel = 1;
+		this.gameOver = false;
+		this.gameStarted = true;
+		this.playCount++;
 
 		// Update UI
-		this.ui.updateLevel(levelNumber);
-		this.ui.updateCubesLeft(this.level.getRemainingCubes());
+		this.ui.updateScore(this.score);
+		this.ui.updateLevel(this.currentLevel);
+
+		// Start the game loop
+		this.animate();
+
+		// Generate the first level
+		this.level.generateLevel(this.currentLevel);
 	}
 
-	nextLevel() {
-		this.currentLevel++;
-
-		// Check for payment after 7 plays
-		this.playCount++;
-		if (this.playCount >= 7) {
-			this.paymentModal.show();
+	restartGame() {
+		// Check if player has reached play limit
+		if (this.playCount >= 3 && !this.paid) {
+			this.ui.showPaymentModal();
 			return;
 		}
 
-		this.startLevel(this.currentLevel);
+		// Reset game state
+		this.startGame();
 	}
 
 	endGame() {
 		this.gameOver = true;
-		this.ui.showGameOver(this.score);
+		this.gameStarted = false;
+		this.ui.showGameOverScreen(this.score);
 	}
 
-	restart() {
-		this.score = 0;
-		this.currentLevel = 1;
-		this.gameOver = false;
-
-		// Clear existing level
-		this.level.clearLevel();
-
-		// Start new level
-		this.startLevel(this.currentLevel);
-
-		// Hide game over screen
-		this.ui.hideGameOver();
+	handlePayment() {
+		// Create a checkout session
+		fetch('/create-checkout-session', {
+			method: 'POST',
+			headers: {
+				'Content-Type': 'application/json',
+			},
+			body: JSON.stringify({
+				price: 'price_your_price_id',
+			}),
+		})
+			.then((response) => response.json())
+			.then((session) => {
+				return this.stripe.redirectToCheckout({ sessionId: session.id });
+			})
+			.then((result) => {
+				if (result.error) {
+					console.error(result.error.message);
+				}
+			})
+			.catch((error) => {
+				console.error('Error:', error);
+			});
 	}
 
 	update() {
 		if (this.paused || this.gameOver) return;
 
 		const delta = this.clock.getDelta();
+
+		// Update camera position if animation is enabled
+		if (this.cameraAnimation && this.cameraAnimation.active) {
+			this.updateCameraPosition(delta);
+		}
+
+		// Update player
+		if (this.player) {
+			this.player.update(delta);
+		}
 
 		// Update level
 		this.level.update(delta);
@@ -421,15 +601,61 @@ export class Game {
 
 		// Update UI
 		this.ui.updateCubesLeft(this.level.getRemainingCubes());
+
+		// Update post-processing effects
+		if (this.composer) {
+			this.composer.render();
+		} else {
+			this.renderer.render(this.scene, this.camera);
+		}
+	}
+
+	updateCameraPosition(delta) {
+		// Update angle
+		this.cameraAnimation.angle += this.cameraAnimation.speed;
+
+		// Calculate new x position with smooth sine wave
+		const newX =
+			this.cameraAnimation.basePosition.x +
+			Math.sin(this.cameraAnimation.angle) * this.cameraAnimation.amplitude;
+
+		// Update camera position
+		this.camera.position.x = newX;
+
+		// Adjust look-at position slightly for more natural movement
+		const lookAtX =
+			Math.sin(this.cameraAnimation.angle) *
+			(this.cameraAnimation.amplitude / 4);
+		this.camera.lookAt(
+			lookAtX,
+			this.cameraAnimation.lookAtPosition.y,
+			this.cameraAnimation.lookAtPosition.z
+		);
+	}
+
+	toggleCameraAnimation() {
+		this.cameraAnimation.active = !this.cameraAnimation.active;
+		if (!this.cameraAnimation.active) {
+			// Reset to center position when turning off
+			this.camera.position.x = this.cameraAnimation.basePosition.x;
+			this.camera.lookAt(
+				this.cameraAnimation.lookAtPosition.x,
+				this.cameraAnimation.lookAtPosition.y,
+				this.cameraAnimation.lookAtPosition.z
+			);
+		}
 	}
 
 	animate() {
 		requestAnimationFrame(() => this.animate());
+		const delta = this.clock.getDelta();
+		this.update(delta);
 
-		// Update game state
-		this.update();
-
-		// Render scene
-		this.renderer.render(this.scene, this.camera);
+		// Use composer instead of renderer if available
+		if (this.composer) {
+			this.composer.render();
+		} else {
+			this.renderer.render(this.scene, this.camera);
+		}
 	}
 }
