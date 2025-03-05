@@ -1,31 +1,23 @@
 export class UI {
 	constructor(game) {
+		console.log('DEBUG - UI initialization started');
 		this.game = game;
-		console.log('DEBUG - Initializing UI');
 
-		// Get UI elements
+		// Get UI elements with null checks
 		this.scoreElement = document.getElementById('score');
 		this.levelElement = document.getElementById('level');
 		this.cubesLeftElement = document.getElementById('cubes-left');
 		this.livesElement = document.getElementById('lives');
-
-		// Get screen elements
 		this.startScreen = document.getElementById('start-screen');
-		this.gameOverScreen = document.getElementById('game-over');
+		this.gameOverScreen = document.getElementById('game-over-screen');
 		this.finalScoreElement = document.getElementById('final-score');
-
-		// Get buttons
 		this.startButton = document.getElementById('start-button');
 		this.restartButton = document.getElementById('restart-button');
-
-		// Payment modal
 		this.paymentModal = document.getElementById('payment-modal');
-		this.paymentButtonContainer = document.getElementById(
-			'payment-button-container'
-		);
+		this.paymentButton = document.getElementById('pay-button');
 
-		// Log which elements were found and which weren't
-		console.log('DEBUG - UI Elements found:', {
+		// Log which elements were found
+		console.log('DEBUG - UI elements found:', {
 			score: !!this.scoreElement,
 			level: !!this.levelElement,
 			cubesLeft: !!this.cubesLeftElement,
@@ -36,35 +28,46 @@ export class UI {
 			startButton: !!this.startButton,
 			restartButton: !!this.restartButton,
 			paymentModal: !!this.paymentModal,
-			paymentButtonContainer: !!this.paymentButtonContainer,
+			paymentButton: !!this.paymentButton,
 		});
 
 		// Initialize event listeners
 		this.initEventListeners();
+
+		// Set initial lives display
+		this.updateLives(3);
+
+		console.log('DEBUG - UI initialization complete');
 	}
 
 	initEventListeners() {
-		// Start button
+		console.log('DEBUG - Setting up UI event listeners');
+
+		// Add event listeners with null checks
 		if (this.startButton) {
 			this.startButton.addEventListener('click', () => {
+				console.log('DEBUG - Start button clicked');
 				this.hideStartScreen();
-				this.game.startGame();
+				this.game.startLevel(this.game.currentLevel);
 			});
-			console.log('DEBUG - Start button event listener added');
 		} else {
-			console.warn('WARNING - Start button not found');
+			console.warn(
+				'WARNING - Start button not found, game may not start properly'
+			);
 		}
 
-		// Restart button
 		if (this.restartButton) {
 			this.restartButton.addEventListener('click', () => {
-				this.hideGameOverScreen();
-				this.game.restartGame();
+				console.log('DEBUG - Restart button clicked');
+				this.game.restart();
 			});
-			console.log('DEBUG - Restart button event listener added');
 		} else {
-			console.warn('WARNING - Restart button not found');
+			console.warn(
+				'WARNING - Restart button not found, game cannot be restarted'
+			);
 		}
+
+		console.log('DEBUG - UI event listeners initialized');
 	}
 
 	updateScore(score) {
@@ -87,105 +90,76 @@ export class UI {
 
 	updateLives(lives) {
 		if (this.livesElement) {
-			// Clear previous hearts
+			// Clear current hearts
 			this.livesElement.innerHTML = '';
 
-			// Add heart icons for each life
-			for (let i = 0; i < lives; i++) {
-				const heartIcon = document.createElement('span');
-				heartIcon.className = 'heart-icon';
-				heartIcon.innerHTML = '❤️';
-				this.livesElement.appendChild(heartIcon);
-			}
-
-			// Add empty hearts for lost lives
-			for (let i = lives; i < 3; i++) {
-				const emptyHeartIcon = document.createElement('span');
-				emptyHeartIcon.className = 'heart-icon empty';
-				emptyHeartIcon.innerHTML = '🖤';
-				this.livesElement.appendChild(emptyHeartIcon);
+			// Add heart icons based on lives count
+			for (let i = 0; i < 3; i++) {
+				const heart = document.createElement('span');
+				if (i < lives) {
+					heart.innerHTML = '❤️';
+					heart.className = 'heart-icon';
+				} else {
+					heart.innerHTML = '❤️';
+					heart.className = 'heart-icon empty';
+				}
+				this.livesElement.appendChild(heart);
 			}
 		}
 	}
 
 	showGameOverScreen(finalScore) {
-		if (this.finalScoreElement && this.gameOverScreen) {
-			this.finalScoreElement.textContent = finalScore;
+		console.log('DEBUG - Showing game over screen with score:', finalScore);
+		if (this.gameOverScreen) {
+			if (this.finalScoreElement) {
+				this.finalScoreElement.textContent = `Your score: ${finalScore}`;
+			}
 			this.gameOverScreen.style.display = 'flex';
-			console.log('DEBUG - Game over screen shown with score:', finalScore);
+		} else {
+			console.warn('WARNING - Game over screen element not found');
 		}
 	}
 
 	hideGameOverScreen() {
+		console.log('DEBUG - Hiding game over screen');
 		if (this.gameOverScreen) {
 			this.gameOverScreen.style.display = 'none';
-			console.log('DEBUG - Game over screen hidden');
 		}
 	}
 
 	showStartScreen() {
+		console.log('DEBUG - Showing start screen');
 		if (this.startScreen) {
 			this.startScreen.style.display = 'flex';
-			console.log('DEBUG - Start screen shown');
+		} else {
+			console.warn('WARNING - Start screen element not found');
 		}
 	}
 
 	hideStartScreen() {
+		console.log('DEBUG - Hiding start screen');
 		if (this.startScreen) {
 			this.startScreen.style.display = 'none';
-			console.log('DEBUG - Start screen hidden');
 		}
 	}
 
 	showPaymentModal() {
-		if (this.paymentModal && this.paymentButtonContainer) {
+		console.log('DEBUG - Showing payment modal');
+		if (this.paymentModal) {
 			this.paymentModal.style.display = 'flex';
-			console.log('DEBUG - Payment modal shown');
+		} else {
+			console.warn('WARNING - Payment modal element not found');
 
-			// Clear previous buttons
-			this.paymentButtonContainer.innerHTML = '';
-
-			// Initialize Stripe payment button
-			if (this.game.stripe) {
-				const checkoutButton = document.createElement('button');
-				checkoutButton.id = 'checkout-button';
-				checkoutButton.textContent = 'Unlock Full Game - $2.99';
-				this.paymentButtonContainer.appendChild(checkoutButton);
-
-				checkoutButton.addEventListener('click', () => {
-					this.game.handlePayment();
-				});
-			}
-
-			// Add cancel button
-			const cancelButton = document.createElement('button');
-			cancelButton.id = 'cancel-payment-button';
-			cancelButton.textContent = 'Cancel';
-			cancelButton.style.backgroundColor = 'transparent';
-			cancelButton.style.color = '#ccc';
-			cancelButton.style.border = '2px solid #ccc';
-			this.paymentButtonContainer.appendChild(cancelButton);
-
-			// Add event listener to cancel button
-			cancelButton.addEventListener('click', () => {
-				this.hidePaymentModal();
-				this.hideGameOverScreen();
-				this.game.restartGame();
-			});
+			// Fallback: If modal not found, just continue the game
+			this.game.playCount = 0;
+			this.game.startLevel(this.game.currentLevel);
 		}
 	}
 
 	hidePaymentModal() {
-		if (this.paymentModal && this.paymentButtonContainer) {
+		console.log('DEBUG - Hiding payment modal');
+		if (this.paymentModal) {
 			this.paymentModal.style.display = 'none';
-			console.log('DEBUG - Payment modal hidden');
-
-			// Clear payment button container
-			while (this.paymentButtonContainer.firstChild) {
-				this.paymentButtonContainer.removeChild(
-					this.paymentButtonContainer.firstChild
-				);
-			}
 		}
 	}
 }

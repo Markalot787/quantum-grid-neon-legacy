@@ -489,34 +489,64 @@ export class Game {
 	}
 
 	startGame() {
-		// Reset game state
+		console.log('DEBUG - Starting game');
 		this.score = 0;
 		this.currentLevel = 1;
 		this.gameOver = false;
-		this.gameStarted = true;
-		this.playCount++;
-		this.lives = 3;
+		this.paused = false;
 
-		// Update UI
-		this.ui.updateScore(this.score);
-		this.ui.updateLevel(this.currentLevel);
-		this.ui.updateLives(this.lives);
-
-		// Start the game loop
-		this.animate();
-
-		// Generate the first level
-		this.level.generateLevel(this.currentLevel);
-	}
-
-	restartGame() {
-		// Check if player has reached play limit
-		if (this.playCount >= 3 && !this.paid) {
-			this.ui.showPaymentModal();
-			return;
+		// Clear existing level
+		if (this.level) {
+			this.level.clearLevel();
 		}
 
-		// Reset game state
+		// Update UI
+		if (this.ui) {
+			this.ui.updateScore(this.score);
+			this.ui.updateLevel(this.currentLevel);
+			this.ui.updateLives(3);
+		}
+
+		// Start first level
+		this.startLevel(this.currentLevel);
+	}
+
+	startLevel(levelNumber) {
+		console.log('DEBUG - Starting level', levelNumber);
+		// Reset state
+		this.markedTile = null;
+		this.activatedAdvantage = false;
+
+		// Configure level based on level number
+		this.settings.cubeSpeed = 1.0 + levelNumber * 0.2;
+		this.settings.initialCubeCount = 5 + levelNumber * 2;
+
+		// Generate level
+		if (this.level) {
+			this.level.generateLevel(levelNumber);
+		}
+
+		// Reset player position
+		if (this.player) {
+			this.player.resetPosition();
+		}
+
+		// Update UI
+		if (this.ui) {
+			this.ui.updateLevel(levelNumber);
+			if (this.level) {
+				this.ui.updateCubesLeft(this.level.getRemainingCubes());
+			}
+		}
+
+		console.log('DEBUG - Level started with settings:', {
+			cubeSpeed: this.settings.cubeSpeed,
+			initialCubeCount: this.settings.initialCubeCount,
+		});
+	}
+
+	restart() {
+		console.log('DEBUG - Restarting game');
 		this.startGame();
 	}
 
