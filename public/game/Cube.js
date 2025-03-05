@@ -1,214 +1,329 @@
 import * as THREE from 'https://cdn.jsdelivr.net/npm/three@0.157.0/build/three.module.js';
 
 export class Cube {
-	constructor(game, type, x, z) {
+	constructor(game, type = 'normal', x = 0, z = 0) {
 		this.game = game;
-		this.type = type; // 'normal', 'forbidden', or 'advantage'
-		this.size = 1;
+		this.type = type;
+		this.position = { x, z };
 		this.mesh = null;
-		this.position = { x, z }; // Track position separately for consistent movement
-		this.rotation = {
-			speed: (Math.random() - 0.5) * 0.01, // Reduced random rotation for more consistent movement
-			axis: new THREE.Vector3(
-				Math.random() > 0.5 ? 1 : 0,
-				0,
-				Math.random() > 0.5 ? 1 : 0
-			).normalize(),
-		};
+		this.size = 0.8;
+		this.speed = this.game.settings.cubeSpeed;
+		this.rotationSpeed = 2.0; // Base rotation speed
+		this.destroyed = false;
 
-		// Create cube mesh
-		this.createMesh(x, z);
+		// For smooth movement
+		this.lastPosition = { x, z };
+		this.targetPosition = { x, z: z - 1 }; // Moving toward player (lower z)
+		this.moveProgress = 0;
+
+		console.log('DEBUG - Cube created:', {
+			type,
+			position: this.position,
+			speed: this.speed,
+		});
+
+		this.init();
 	}
 
-	createMesh(x, z) {
+	init() {
+		this.createMesh();
+	}
+
+	createMesh() {
+		// Create cube geometry
 		const geometry = new THREE.BoxGeometry(this.size, this.size, this.size);
+
+		// Create material based on cube type
 		let material;
 
-		// MUCH brighter materials for dramatically improved visibility
 		switch (this.type) {
 			case 'normal':
+				// Standard gray cube
 				material = new THREE.MeshStandardMaterial({
-					color: 0xcccccc, // Much brighter gray for normal cubes
-					emissive: 0x888888,
-					emissiveIntensity: 0.6,
+					color: 0xaaaaaa,
+					emissive: 0x222222,
+					emissiveIntensity: 0.3,
 					metalness: 0.7,
 					roughness: 0.3,
 				});
 				break;
+
 			case 'advantage':
-				material = new THREE.MeshStandardMaterial({
-					color: 0x00ff00, // Bright green for advantage cubes
-					emissive: 0x00ff00,
-					emissiveIntensity: 1.0, // Full emissive intensity
-					metalness: 0.7,
-					roughness: 0.3,
-				});
-				break;
-			case 'forbidden':
-				material = new THREE.MeshStandardMaterial({
-					color: 0x000000, // Black for forbidden cubes
-					emissive: 0xff0000, // Strong red glow
-					emissiveIntensity: 0.7, // Increased emissive
-					metalness: 0.8,
-					roughness: 0.2,
-				});
-				break;
-			// Fallback for any other types with brighter materials
-			case 'red':
-				material = new THREE.MeshStandardMaterial({
-					color: 0xff0000,
-					emissive: 0xff0000,
-					emissiveIntensity: 1.0,
-					metalness: 0.8,
-					roughness: 0.2,
-				});
-				break;
-			case 'green':
+				// Green cube with glow
 				material = new THREE.MeshStandardMaterial({
 					color: 0x00ff00,
 					emissive: 0x00ff00,
-					emissiveIntensity: 1.0,
-					metalness: 0.8,
-					roughness: 0.2,
+					emissiveIntensity: 0.5,
+					metalness: 0.7,
+					roughness: 0.3,
 				});
 				break;
-			case 'blue':
-				material = new THREE.MeshStandardMaterial({
-					color: 0x0000ff,
-					emissive: 0x0000ff,
-					emissiveIntensity: 1.0,
-					metalness: 0.8,
-					roughness: 0.2,
-				});
-				break;
-			case 'yellow':
-				material = new THREE.MeshStandardMaterial({
-					color: 0xffff00,
-					emissive: 0xffff00,
-					emissiveIntensity: 1.0,
-					metalness: 0.8,
-					roughness: 0.2,
-				});
-				break;
-			case 'black':
+
+			case 'forbidden':
+				// Black cube with subtle red glow
 				material = new THREE.MeshStandardMaterial({
 					color: 0x000000,
-					emissive: 0xff00ff,
-					emissiveIntensity: 0.8,
+					emissive: 0xff0000,
+					emissiveIntensity: 0.3,
 					metalness: 0.9,
-					roughness: 0.1,
+					roughness: 0.2,
 				});
 				break;
+
 			default:
+				// Fallback for other types
 				material = new THREE.MeshStandardMaterial({
-					color: 0xffffff,
-					emissive: 0xffffff,
-					emissiveIntensity: 0.8,
-					metalness: 0.8,
-					roughness: 0.2,
+					color: 0xaaaaaa,
+					emissive: 0x222222,
+					emissiveIntensity: 0.3,
+					metalness: 0.7,
+					roughness: 0.3,
 				});
 		}
 
-		// Add thicker wireframe overlay for enhanced visibility
+		// Create mesh
+		this.mesh = new THREE.Mesh(geometry, material);
+
+		// Add wireframe overlay for neon grid effect
+		const wireframeColor = this.getWireframeColor();
 		const wireframe = new THREE.LineSegments(
 			new THREE.EdgesGeometry(geometry),
 			new THREE.LineBasicMaterial({
-				color: this.getWireframeColor(),
-				linewidth: 3, // Thicker lines
+				color: wireframeColor,
+				linewidth: 1.5,
 			})
 		);
+		this.mesh.add(wireframe);
 
-		// Create the main mesh
-		this.mesh = new THREE.Mesh(geometry, material);
-		this.mesh.position.set(x, this.size / 2, z);
-		this.position = { x, z }; // Store initial position
+		// Set initial position
+		this.updateMeshPosition();
+
+		// Enable shadows
 		this.mesh.castShadow = true;
 		this.mesh.receiveShadow = true;
 
-		// Add wireframe as child of the mesh
-		this.mesh.add(wireframe);
-
-		// Add glow light for extra visibility on special cubes
-		if (this.type === 'advantage' || this.type === 'forbidden') {
-			const glowColor = this.type === 'advantage' ? 0x00ff00 : 0xff0000;
-			const glowLight = new THREE.PointLight(glowColor, 0.8, 3);
-			glowLight.position.set(0, 0, 0);
-			this.mesh.add(glowLight);
-		}
-
 		// Add to scene
 		this.game.scene.add(this.mesh);
+
+		console.log('DEBUG - Cube mesh created:', {
+			position: this.mesh.position,
+			type: this.type,
+			material: material.color.getHexString(),
+		});
 	}
 
 	getWireframeColor() {
 		switch (this.type) {
 			case 'normal':
-				return 0xffffff; // White outline for normal cubes
+				return 0xffffff;
 			case 'advantage':
-				return 0x00ff00; // Pure green outline (brighter)
+				return 0x00ff88;
 			case 'forbidden':
-				return 0xff0000; // Pure red outline (brighter)
-			case 'red':
-				return 0xff5555;
-			case 'green':
-				return 0x55ff55;
-			case 'blue':
-				return 0x5555ff;
-			case 'yellow':
-				return 0xffff55;
-			case 'black':
-				return 0xff00ff; // Purple wireframe for black cubes
+				return 0xff3333;
 			default:
 				return 0xffffff;
 		}
 	}
 
+	updateMeshPosition() {
+		if (this.mesh) {
+			// Interpolate between last and target position based on moveProgress
+			const x =
+				this.lastPosition.x +
+				(this.targetPosition.x - this.lastPosition.x) * this.moveProgress;
+			const z =
+				this.lastPosition.z +
+				(this.targetPosition.z - this.lastPosition.z) * this.moveProgress;
+
+			// Update actual position
+			this.position.x = x;
+			this.position.z = z;
+
+			// Update mesh position
+			this.mesh.position.set(
+				x,
+				this.size * 0.5, // Half height to sit on platform
+				z
+			);
+		}
+	}
+
 	update(delta) {
-		// CRITICAL FIX: Ensure consistent movement speed
-		const speed = this.game.settings.cubeSpeed * delta;
+		if (this.destroyed) return;
 
-		// Move cube towards player at consistent speed
-		this.position.z -= speed;
+		// Update movement progress
+		this.moveProgress += this.speed * delta;
 
-		// CRITICAL FIX: Update mesh position directly
-		this.mesh.position.z = this.position.z;
+		// If we've reached the target position
+		if (this.moveProgress >= 1) {
+			// Update positions
+			this.lastPosition = { ...this.targetPosition };
+			this.targetPosition = {
+				x: this.targetPosition.x,
+				z: this.targetPosition.z - 1,
+			};
+			this.moveProgress = 0;
 
-		// CRITICAL FIX: Implement proper rolling animation
-		// Calculate rotation based on distance moved
-		// A full rotation is 2π radians, which should occur when the cube moves a distance equal to its circumference
-		// For a unit cube, one face is 1 unit, so a 90-degree rotation per unit of distance
-		const rotationAmount = (Math.PI / 2) * speed;
+			// Check if we've reached the end of the platform
+			if (this.lastPosition.z < 0) {
+				this.destroy();
+				return;
+			}
 
-		// Apply rotation around X-axis for forward movement
-		this.mesh.rotateX(rotationAmount);
+			// Check for collision with player
+			this.checkPlayerCollision();
+		}
 
-		// Apply subtle additional rotation for visual flair - reduced for consistency
-		this.mesh.rotateOnAxis(this.rotation.axis, this.rotation.speed * 0.3);
+		// Update mesh position
+		this.updateMeshPosition();
 
-		// Check for collision with player
-		this.checkPlayerCollision();
+		// Update rotation - rolling effect
+		if (this.mesh) {
+			// Calculate rotation based on movement
+			// Roll forward (around X axis) as the cube moves in Z direction
+			this.mesh.rotation.x = (this.moveProgress * Math.PI) / 2;
 
-		// CRITICAL FIX: Check if cube has fallen off the platform
-		if (this.position.z < -2) {
-			// Remove cube if it falls off
-			this.game.level.removeCube(this);
+			// Add slight additional rotation for visual interest
+			const rotationAmount = this.rotationSpeed * delta;
+			this.mesh.rotation.y += rotationAmount * 0.2;
 		}
 	}
 
 	checkPlayerCollision() {
-		// CRITICAL FIX: Ensure player exists before checking collision
-		if (!this.game.player || !this.game.player.mesh) return;
-
 		const playerPos = this.game.player.getPosition();
-		const cubePos = this.mesh.position;
 
-		// Check if cube overlaps with player
+		// Check if cube and player are at the same position
 		if (
-			Math.abs(playerPos.x - cubePos.x) < 0.8 &&
-			Math.abs(playerPos.z - cubePos.z) < 0.8
+			Math.round(this.position.x) === playerPos.x &&
+			Math.round(this.position.z) === playerPos.z
 		) {
-			// Player got crushed by cube
-			this.game.endGame();
+			console.log('DEBUG - Cube collision with player detected');
+
+			// Handle collision based on cube type
+			switch (this.type) {
+				case 'normal':
+					// End game on normal cube collision
+					this.game.endGame();
+					break;
+
+				case 'advantage':
+					// Trigger advantage effect and destroy cube
+					this.triggerAdvantage();
+					this.destroy();
+					break;
+
+				case 'forbidden':
+					// Trigger forbidden effect and destroy cube
+					this.triggerForbidden();
+					this.destroy();
+					break;
+			}
+		}
+	}
+
+	triggerAdvantage() {
+		// Implement advantage effect (e.g., score bonus, clear row)
+		console.log('DEBUG - Advantage cube triggered');
+		this.game.activateAdvantage(this.position);
+	}
+
+	triggerForbidden() {
+		// Implement forbidden effect (e.g., remove platform tiles)
+		console.log('DEBUG - Forbidden cube triggered');
+		this.game.activateForbidden(this.position);
+	}
+
+	destroy() {
+		if (this.destroyed) return;
+
+		console.log('DEBUG - Destroying cube at position:', this.position);
+
+		// Remove from scene
+		if (this.mesh) {
+			this.game.scene.remove(this.mesh);
+			this.mesh.geometry.dispose();
+			this.mesh.material.dispose();
+		}
+
+		// Mark as destroyed
+		this.destroyed = true;
+
+		// Create explosion effect
+		this.createExplosionEffect();
+	}
+
+	createExplosionEffect() {
+		// Create particles for explosion effect
+		const particleCount = 20;
+		const particleGeometry = new THREE.BoxGeometry(0.1, 0.1, 0.1);
+		const particleMaterial = new THREE.MeshBasicMaterial({
+			color: this.getParticleColor(),
+			emissive: this.getParticleColor(),
+			emissiveIntensity: 1.0,
+		});
+
+		for (let i = 0; i < particleCount; i++) {
+			const particle = new THREE.Mesh(particleGeometry, particleMaterial);
+
+			// Set initial position at cube center
+			particle.position.set(this.position.x, this.size * 0.5, this.position.z);
+
+			// Set random velocity
+			const velocity = new THREE.Vector3(
+				(Math.random() - 0.5) * 0.1,
+				Math.random() * 0.1,
+				(Math.random() - 0.5) * 0.1
+			);
+
+			// Add to scene
+			this.game.scene.add(particle);
+
+			// Animate particle
+			const duration = 0.5 + Math.random() * 0.5; // 0.5 to 1 second
+			const startTime = this.game.clock.getElapsedTime();
+
+			const updateParticle = () => {
+				const elapsed = this.game.clock.getElapsedTime() - startTime;
+				const progress = elapsed / duration;
+
+				if (progress >= 1) {
+					// Remove particle
+					this.game.scene.remove(particle);
+					particle.geometry.dispose();
+					particle.material.dispose();
+					return;
+				}
+
+				// Update position
+				particle.position.x += velocity.x;
+				particle.position.y += velocity.y;
+				particle.position.z += velocity.z;
+
+				// Apply gravity
+				velocity.y -= 0.01;
+
+				// Fade out
+				particle.material.opacity = 1 - progress;
+
+				// Continue animation
+				requestAnimationFrame(updateParticle);
+			};
+
+			// Start animation
+			updateParticle();
+		}
+	}
+
+	getParticleColor() {
+		switch (this.type) {
+			case 'normal':
+				return 0xaaaaaa;
+			case 'advantage':
+				return 0x00ff00;
+			case 'forbidden':
+				return 0xff0000;
+			default:
+				return 0xffffff;
 		}
 	}
 }

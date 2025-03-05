@@ -5,10 +5,16 @@ import { UI } from './UI.js';
 import { PaymentModal } from './PaymentModal.js';
 
 export class Game {
-	constructor() {
-		this.scene = null;
-		this.camera = null;
-		this.renderer = null;
+	constructor(container) {
+		this.container = container;
+		this.scene = new THREE.Scene();
+		this.camera = new THREE.PerspectiveCamera(
+			75,
+			window.innerWidth / window.innerHeight,
+			0.1,
+			1000
+		);
+		this.renderer = new THREE.WebGLRenderer({ antialias: true });
 		this.player = null;
 		this.level = null;
 		this.ui = null;
@@ -19,37 +25,26 @@ export class Game {
 		this.gameOver = false;
 		this.paymentModal = null;
 		this.playCount = 0;
-
-		// Game state
 		this.paused = false;
 		this.markedTile = null;
-		this.activatedAdvantage = null;
-		this.lives = 3;
-		this.paid = false;
-
-		// Settings
-		this.settings = {
-			stageWidth: 10,
-			stageLength: 15,
-			cubeSpeed: 2.0,
-			initialCubeCount: 15,
-		};
+		this.activatedAdvantage = false;
 
 		// Camera animation properties
 		this.cameraAnimation = {
 			active: false,
-			speed: 0.5,
-			amplitude: 5,
-			angle: 0,
-			basePosition: new THREE.Vector3(0, 18, 25),
-			lookAtPosition: new THREE.Vector3(0, 0, 7),
+			time: 0,
+			amplitude: 3,
+			frequency: 0.5,
 		};
 
-		// Post-processing properties
-		this.composer = null;
-		this.bloomPass = null;
+		// Game settings
+		this.settings = {
+			stageWidth: 7,
+			stageLength: 15,
+			cubeSpeed: 1.0,
+			initialCubeCount: 5,
+		};
 
-		// Initialize the game
 		this.init();
 	}
 
@@ -60,26 +55,22 @@ export class Game {
 
 		// Create camera with better angle for platform visibility
 		this.camera = new THREE.PerspectiveCamera(
-			60, // Wider FOV for better visibility
+			75,
 			window.innerWidth / window.innerHeight,
 			0.1,
 			1000
 		);
 
-		// Position camera for optimal view
-		this.camera.position.set(0, 15, 20); // Higher and further back for better platform view
-		this.camera.lookAt(0, 0, 7); // Look at the middle of the platform
+		// Position camera for better view of the game
+		this.camera.position.set(0, 10, -10);
+		this.camera.lookAt(0, 0, 5);
 
 		console.log('DEBUG - Camera setup:', {
 			position: this.camera.position,
 			rotation: this.camera.rotation,
 			fov: this.camera.fov,
-			lookingAt: new THREE.Vector3(0, 0, 7),
+			lookingAt: new THREE.Vector3(0, 0, 5),
 		});
-
-		// Update animation base position to match our new better position
-		this.cameraAnimation.basePosition = new THREE.Vector3(0, 15, 20);
-		this.cameraAnimation.lookAtPosition = new THREE.Vector3(0, 0, 7);
 
 		// Create renderer
 		this.setupRenderer();
@@ -284,57 +275,34 @@ export class Game {
 		}
 	}
 
-	handleKeyDown(e) {
-		if (!this.gameStarted || this.gameOver || this.paused) {
-			// Only handle ESC key when game is not started
-			if (e.key === 'Escape') {
-				this.paused = !this.paused;
-				if (this.paused) {
-					this.ui.showPauseScreen();
-				} else {
-					this.ui.hidePauseScreen();
-				}
-			}
-			return;
-		}
+	handleKeyDown(event) {
+		if (this.gameOver || this.paused) return;
 
-		const key = e.key.toLowerCase();
-
-		if (key === 'escape') {
-			this.paused = !this.paused;
-			return;
-		}
-
-		if (this.paused) return;
-
-		// Player movement
-		if (key === 'w' || key === 'arrowup') {
-			this.player.move('forward');
-		} else if (key === 's' || key === 'arrowdown') {
-			this.player.move('backward');
-		} else if (key === 'a' || key === 'arrowleft') {
-			this.player.move('right');
-		} else if (key === 'd' || key === 'arrowright') {
-			this.player.move('left');
-		}
-
-		// Mark/Capture cube
-		if (key === ' ') {
-			if (this.markedTile) {
-				this.captureCube();
-			} else {
-				this.markTile();
-			}
-		}
-
-		// Activate advantage cube
-		if (key === 'r') {
-			this.activateAdvantage();
-		}
-
-		// Toggle camera animation
-		if (key === 'c') {
-			this.toggleCameraAnimation();
+		switch (event.key.toLowerCase()) {
+			case 'arrowleft':
+			case 'a':
+				this.player.move('left');
+				break;
+			case 'arrowright':
+			case 'd':
+				this.player.move('right');
+				break;
+			case 'arrowup':
+			case 'w':
+				this.player.move('up');
+				break;
+			case 'arrowdown':
+			case 's':
+				this.player.move('down');
+				break;
+			case 'c':
+				// Toggle camera animation
+				this.toggleCameraAnimation();
+				break;
+			case 'p':
+				// Toggle pause
+				this.togglePause();
+				break;
 		}
 	}
 
@@ -441,45 +409,32 @@ export class Game {
 	}
 
 	activateAdvantage() {
-		if (!this.activatedAdvantage) return;
-
-		// Create 3x3 area effect
-		const center = this.activatedAdvantage.position;
-		const areaSize = 1;
-
-		// Get all cubes in the 3x3 area
-		const capturedCubes = [];
-
-		for (let x = center.x - areaSize; x <= center.x + areaSize; x++) {
-			for (let z = center.y - areaSize; z <= center.y + areaSize; z++) {
-				const cubes = this.level.getCubesAtPosition(x, z);
-				capturedCubes.push(...cubes);
-			}
-		}
-
-		// Process each cube in the advantage area
-		capturedCubes.forEach((cube) => {
-			if (cube.type === 'normal') {
-				this.score += 100;
-				this.level.removeCube(cube);
-			} else if (cube.type === 'advantage') {
-				this.score += 50;
-				this.level.removeCube(cube);
-			}
-			// Don't capture forbidden cubes with advantage
-		});
-
-		// Create advantage effect
-		this.createAdvantageEffect(
-			new THREE.Vector3(center.x, 0.1, center.y),
-			areaSize
+		console.log(
+			'DEBUG - Advantage activated at position:',
+			this.activatedAdvantage.position
 		);
 
-		// Update score
+		// Increase score
+		this.score += 100;
+
+		// Update UI
 		this.ui.updateScore(this.score);
 
-		// Reset advantage
+		// Mark that an advantage was activated
 		this.activatedAdvantage = null;
+
+		// Create chain reaction - destroy nearby cubes
+		this.level.destroyCubesInRadius(this.activatedAdvantage.position, 2);
+	}
+
+	activateForbidden() {
+		console.log(
+			'DEBUG - Forbidden cube activated at position:',
+			this.activatedAdvantage.position
+		);
+
+		// Remove 3 rows of platform starting from the cube's position
+		this.level.removePlatformRows(this.activatedAdvantage.position.y, 3);
 	}
 
 	createCaptureEffect(position, color = 0x0099ff) {
@@ -509,43 +464,6 @@ export class Game {
 				const scale = startScale + (endScale - startScale) * progress;
 				effect.scale.set(scale, scale, scale);
 				effect.material.opacity = 0.7 * (1 - progress);
-
-				requestAnimationFrame(animate);
-			} else {
-				this.scene.remove(effect);
-			}
-		};
-
-		animate();
-	}
-
-	createAdvantageEffect(position, size) {
-		// Create effect
-		const geometry = new THREE.BoxGeometry(size * 2 + 1, 0.5, size * 2 + 1);
-		const material = new THREE.MeshBasicMaterial({
-			color: 0x00ff00,
-			transparent: true,
-			opacity: 0.5,
-		});
-
-		const effect = new THREE.Mesh(geometry, material);
-		effect.position.copy(position);
-		this.scene.add(effect);
-
-		// Animation for the effect
-		const startScale = 1;
-		const endScale = 1.5;
-		const duration = 1.0;
-		let elapsed = 0;
-
-		const animate = () => {
-			elapsed += 0.016;
-			const progress = elapsed / duration;
-
-			if (progress < 1) {
-				const scale = startScale + (endScale - startScale) * progress;
-				effect.scale.set(scale, scale, scale);
-				effect.material.opacity = 0.5 * (1 - progress);
 
 				requestAnimationFrame(animate);
 			} else {
@@ -640,17 +558,8 @@ export class Game {
 			});
 	}
 
-	update() {
-		if (!this.gameStarted || this.gameOver) {
-			return;
-		}
-
-		const delta = this.clock.getDelta();
-
-		// Update camera position if animation is enabled
-		if (this.cameraAnimation && this.cameraAnimation.active) {
-			this.updateCameraPosition(delta);
-		}
+	update(delta) {
+		if (this.paused || this.gameOver) return;
 
 		// Update player
 		if (this.player) {
@@ -658,7 +567,19 @@ export class Game {
 		}
 
 		// Update level
-		this.level.update(delta);
+		if (this.level) {
+			this.level.update(delta);
+		}
+
+		// Update UI
+		if (this.ui) {
+			this.ui.update();
+		}
+
+		// Update camera position if animation is active
+		if (this.cameraAnimation.active) {
+			this.updateCameraPosition(delta);
+		}
 
 		// Check for level completion
 		if (this.level.isLevelComplete()) {
@@ -670,9 +591,6 @@ export class Game {
 			this.endGame();
 		}
 
-		// Update UI
-		this.ui.updateCubesLeft(this.level.getRemainingCubes());
-
 		// Update post-processing effects
 		if (this.composer) {
 			this.composer.render();
@@ -682,38 +600,58 @@ export class Game {
 	}
 
 	updateCameraPosition(delta) {
-		// Update angle
-		this.cameraAnimation.angle += this.cameraAnimation.speed;
+		// Update time counter
+		this.cameraAnimation.time += delta;
 
-		// Calculate new x position with smooth sine wave
-		const newX =
-			this.cameraAnimation.basePosition.x +
-			Math.sin(this.cameraAnimation.angle) * this.cameraAnimation.amplitude;
+		// Calculate new camera position using sine wave for smooth movement
+		const xPos =
+			Math.sin(this.cameraAnimation.time * this.cameraAnimation.frequency) *
+			this.cameraAnimation.amplitude;
 
 		// Update camera position
-		this.camera.position.x = newX;
+		this.camera.position.x = xPos;
 
-		// Adjust look-at position slightly for more natural movement
-		const lookAtX =
-			Math.sin(this.cameraAnimation.angle) *
-			(this.cameraAnimation.amplitude / 4);
-		this.camera.lookAt(
-			lookAtX,
-			this.cameraAnimation.lookAtPosition.y,
-			this.cameraAnimation.lookAtPosition.z
-		);
+		// Adjust look-at position for more natural movement
+		// Camera always looks slightly ahead of the player
+		const lookAtZ = 5; // Fixed point ahead on the platform
+		this.camera.lookAt(xPos * 0.2, 0, lookAtZ);
+
+		// Log camera position for debugging
+		console.log('DEBUG - Camera position:', {
+			x: this.camera.position.x.toFixed(2),
+			y: this.camera.position.y.toFixed(2),
+			z: this.camera.position.z.toFixed(2),
+		});
 	}
 
 	toggleCameraAnimation() {
+		// Toggle camera animation state
 		this.cameraAnimation.active = !this.cameraAnimation.active;
+
+		console.log(
+			'DEBUG - Camera animation toggled:',
+			this.cameraAnimation.active
+		);
+
+		// Reset camera position when turning off animation
 		if (!this.cameraAnimation.active) {
-			// Reset to center position when turning off
-			this.camera.position.x = this.cameraAnimation.basePosition.x;
-			this.camera.lookAt(
-				this.cameraAnimation.lookAtPosition.x,
-				this.cameraAnimation.lookAtPosition.y,
-				this.cameraAnimation.lookAtPosition.z
-			);
+			// Reset time counter
+			this.cameraAnimation.time = 0;
+
+			// Reset camera position
+			this.camera.position.set(0, 10, -10);
+			this.camera.lookAt(0, 0, 5);
+
+			console.log('DEBUG - Camera position reset');
+		}
+	}
+
+	togglePause() {
+		this.paused = !this.paused;
+		if (this.paused) {
+			this.ui.showPauseScreen();
+		} else {
+			this.ui.hidePauseScreen();
 		}
 	}
 

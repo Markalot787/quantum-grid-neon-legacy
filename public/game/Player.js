@@ -8,36 +8,33 @@ export class Player {
 			x: 0,
 			z: 0,
 		};
-		this.size = 0.3;
+		this.size = 0.8;
 		this.moveSpeed = 0.2;
 		this.lastMoveTime = 0;
 		this.moveCooldown = 150; // ms
-		this.isMoving = false;
-		this.moveProgress = 0;
-		this.startPosition = { x: 0, z: 0 };
-		this.targetPosition = { x: 0, z: 0 };
 
 		this.init();
 	}
 
 	init() {
-		// Create player mesh
+		console.log('DEBUG - Player init called');
 		this.createMesh();
+		this.resetPosition();
 	}
 
 	createMesh() {
 		console.log('DEBUG - Player createMesh called');
 
 		// Create player geometry - slightly larger for better visibility
-		const geometry = new THREE.BoxGeometry(1.0, 1.0, 1.0);
+		const geometry = new THREE.BoxGeometry(this.size, this.size, this.size);
 
-		// Create player material with extremely bright neon effect
+		// Create player material with bright color and glow
 		const material = new THREE.MeshStandardMaterial({
 			color: 0x00ffff,
 			emissive: 0x00ffff,
-			emissiveIntensity: 1.5, // Significantly increased from 0.8
-			metalness: 0.8,
-			roughness: 0.2,
+			emissiveIntensity: 0.8,
+			metalness: 0.7,
+			roughness: 0.3,
 		});
 
 		console.log('DEBUG - Player material settings:', {
@@ -50,9 +47,6 @@ export class Player {
 
 		// Create player mesh
 		this.mesh = new THREE.Mesh(geometry, material);
-		this.mesh.position.y = 0.7; // Raised from platform
-		this.mesh.position.x = this.position.x;
-		this.mesh.position.z = this.position.z;
 		this.mesh.castShadow = true;
 		this.mesh.receiveShadow = true;
 
@@ -63,12 +57,12 @@ export class Player {
 			id: this.mesh.id,
 		});
 
-		// Add wireframe overlay for neon grid effect with much thicker lines
+		// Add wireframe overlay for neon grid effect
 		const wireframe = new THREE.LineSegments(
 			new THREE.EdgesGeometry(geometry),
 			new THREE.LineBasicMaterial({
 				color: 0xffffff,
-				linewidth: 4, // Increased for maximum visibility
+				linewidth: 2,
 			})
 		);
 		this.mesh.add(wireframe);
@@ -86,17 +80,17 @@ export class Player {
 	}
 
 	addGlowEffect() {
-		// Create a point light that follows the player with much increased intensity
-		this.glowLight = new THREE.PointLight(0x00ffff, 2.0, 8); // Doubled intensity, increased range
+		// Create a point light that follows the player
+		this.glowLight = new THREE.PointLight(0x00ffff, 1.0, 5);
 		this.glowLight.position.set(0, 0, 0);
 		this.mesh.add(this.glowLight);
 
-		// Create a pulse animation for the glow with enhanced values
+		// Create a pulse animation for the glow
 		this.glowPulse = {
-			intensity: 2.0,
-			min: 1.5, // Higher minimum brightness
-			max: 2.5, // Higher maximum brightness
-			speed: 3.0, // Faster pulse
+			intensity: 1.0,
+			min: 0.7,
+			max: 1.3,
+			speed: 2.0,
 			direction: 1,
 		};
 	}
@@ -114,63 +108,69 @@ export class Player {
 
 	updateMeshPosition() {
 		if (this.mesh) {
-			this.mesh.position.x = this.position.x;
-			this.mesh.position.z = this.position.z;
-			this.mesh.position.y = 0.7;
+			this.mesh.position.set(
+				this.position.x,
+				this.size * 0.7, // Half height + small gap
+				this.position.z
+			);
 		}
 	}
 
 	move(direction) {
-		// CRITICAL FIX: Store current position for animation
-		this.startPosition = new THREE.Vector3(this.position.x, 0, this.position.z);
+		// Prevent rapid movement
+		const now = Date.now();
+		if (now - this.lastMoveTime < this.moveCooldown) {
+			return;
+		}
+		this.lastMoveTime = now;
 
-		// Update target position based on direction
+		// Get current position
+		const { x, z } = this.position;
+		const stageWidth = this.game.settings.stageWidth;
+		const stageLength = this.game.settings.stageLength;
+
+		// Calculate new position based on direction
+		let newX = x;
+		let newZ = z;
+
 		switch (direction) {
-			case 'left':
-				if (this.position.x > -Math.floor(this.game.settings.stageWidth / 2)) {
-					this.targetPosition = new THREE.Vector3(
-						this.position.x - 1,
-						0,
-						this.position.z
-					);
-					this.isMoving = true;
-					this.moveProgress = 0;
-				}
-				break;
-			case 'right':
-				if (this.position.x < Math.floor(this.game.settings.stageWidth / 2)) {
-					this.targetPosition = new THREE.Vector3(
-						this.position.x + 1,
-						0,
-						this.position.z
-					);
-					this.isMoving = true;
-					this.moveProgress = 0;
-				}
-				break;
 			case 'up':
-				if (this.position.z < this.game.settings.stageLength - 1) {
-					this.targetPosition = new THREE.Vector3(
-						this.position.x,
-						0,
-						this.position.z + 1
-					);
-					this.isMoving = true;
-					this.moveProgress = 0;
-				}
+			case 'forward':
+				newZ = z + 1;
 				break;
 			case 'down':
-				if (this.position.z > 0) {
-					this.targetPosition = new THREE.Vector3(
-						this.position.x,
-						0,
-						this.position.z - 1
-					);
-					this.isMoving = true;
-					this.moveProgress = 0;
-				}
+			case 'backward':
+				newZ = z - 1;
+				break;
+			case 'left':
+				newX = x - 1;
+				break;
+			case 'right':
+				newX = x + 1;
 				break;
 		}
+
+		// Check boundaries
+		const halfWidth = Math.floor(stageWidth / 2);
+		if (newX < -halfWidth || newX > halfWidth) {
+			return;
+		}
+
+		if (newZ < 0 || newZ >= stageLength) {
+			return;
+		}
+
+		// Check if the platform exists at this position
+		if (!this.game.level.isPlatformAt(newX, newZ)) {
+			return;
+		}
+
+		// Move player
+		this.position.x = newX;
+		this.position.z = newZ;
+
+		// Update mesh position
+		this.updateMeshPosition();
 	}
 
 	getPosition() {
@@ -181,30 +181,6 @@ export class Player {
 	}
 
 	update(delta) {
-		// Handle movement animation
-		if (this.isMoving) {
-			this.moveProgress += this.moveSpeed * delta;
-
-			if (this.moveProgress >= 1) {
-				// Movement complete
-				this.position.x = this.targetPosition.x;
-				this.position.z = this.targetPosition.z;
-				this.isMoving = false;
-				this.moveProgress = 0;
-			} else {
-				// Interpolate position
-				this.position.x =
-					this.startPosition.x +
-					(this.targetPosition.x - this.startPosition.x) * this.moveProgress;
-				this.position.z =
-					this.startPosition.z +
-					(this.targetPosition.z - this.startPosition.z) * this.moveProgress;
-			}
-
-			// Update mesh position
-			this.updateMeshPosition();
-		}
-
 		// Update glow pulse effect
 		this.updateGlowEffect(delta);
 	}
