@@ -26,14 +26,14 @@ export class Player {
 	}
 
 	createMesh() {
-		// Create player geometry
-		const geometry = new THREE.BoxGeometry(0.8, 0.8, 0.8);
+		// Create player geometry - slightly larger for better visibility
+		const geometry = new THREE.BoxGeometry(1.0, 1.0, 1.0);
 
-		// Create player material with enhanced neon effect
+		// Create player material with extremely bright neon effect
 		const material = new THREE.MeshStandardMaterial({
 			color: 0x00ffff,
 			emissive: 0x00ffff,
-			emissiveIntensity: 0.8, // Increased from 0.5
+			emissiveIntensity: 1.5, // Significantly increased from 0.8
 			metalness: 0.8,
 			roughness: 0.2,
 		});
@@ -46,12 +46,12 @@ export class Player {
 		this.mesh.castShadow = true;
 		this.mesh.receiveShadow = true;
 
-		// Add wireframe overlay for neon grid effect with thicker lines
+		// Add wireframe overlay for neon grid effect with much thicker lines
 		const wireframe = new THREE.LineSegments(
 			new THREE.EdgesGeometry(geometry),
 			new THREE.LineBasicMaterial({
 				color: 0xffffff,
-				linewidth: 3, // Increased from 2
+				linewidth: 4, // Increased for maximum visibility
 			})
 		);
 		this.mesh.add(wireframe);
@@ -64,17 +64,17 @@ export class Player {
 	}
 
 	addGlowEffect() {
-		// Create a point light that follows the player with increased intensity
-		this.glowLight = new THREE.PointLight(0x00ffff, 1.2, 5); // Increased intensity from 0.8 to 1.2, range from 3 to 5
+		// Create a point light that follows the player with much increased intensity
+		this.glowLight = new THREE.PointLight(0x00ffff, 2.0, 8); // Doubled intensity, increased range
 		this.glowLight.position.set(0, 0, 0);
 		this.mesh.add(this.glowLight);
 
 		// Create a pulse animation for the glow with enhanced values
 		this.glowPulse = {
-			intensity: 1.2,
-			min: 0.8, // Increased minimum brightness
-			max: 1.5, // Increased maximum brightness
-			speed: 2.5, // Slightly faster pulse
+			intensity: 2.0,
+			min: 1.5, // Higher minimum brightness
+			max: 2.5, // Higher maximum brightness
+			speed: 3.0, // Faster pulse
 			direction: 1,
 		};
 	}

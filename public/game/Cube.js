@@ -24,22 +24,22 @@ export class Cube {
 		const geometry = new THREE.BoxGeometry(this.size, this.size, this.size);
 		let material;
 
-		// Enhanced materials to match original game's colors with better visibility
+		// MUCH brighter materials for dramatically improved visibility
 		switch (this.type) {
 			case 'normal':
 				material = new THREE.MeshStandardMaterial({
-					color: 0xaaaaaa, // Gray for normal cubes like original game
-					emissive: 0x444444,
-					emissiveIntensity: 0.3,
+					color: 0xcccccc, // Much brighter gray for normal cubes
+					emissive: 0x888888,
+					emissiveIntensity: 0.6,
 					metalness: 0.7,
 					roughness: 0.3,
 				});
 				break;
 			case 'advantage':
 				material = new THREE.MeshStandardMaterial({
-					color: 0x00ff00, // Green for advantage cubes
+					color: 0x00ff00, // Bright green for advantage cubes
 					emissive: 0x00ff00,
-					emissiveIntensity: 0.5,
+					emissiveIntensity: 1.0, // Full emissive intensity
 					metalness: 0.7,
 					roughness: 0.3,
 				});
@@ -47,18 +47,18 @@ export class Cube {
 			case 'forbidden':
 				material = new THREE.MeshStandardMaterial({
 					color: 0x000000, // Black for forbidden cubes
-					emissive: 0x330000, // Slight red glow
-					emissiveIntensity: 0.3,
+					emissive: 0xff0000, // Strong red glow
+					emissiveIntensity: 0.7, // Increased emissive
 					metalness: 0.8,
 					roughness: 0.2,
 				});
 				break;
-			// Fallback for any other types or for backward compatibility
+			// Fallback for any other types with brighter materials
 			case 'red':
 				material = new THREE.MeshStandardMaterial({
 					color: 0xff0000,
 					emissive: 0xff0000,
-					emissiveIntensity: 0.5,
+					emissiveIntensity: 1.0,
 					metalness: 0.8,
 					roughness: 0.2,
 				});
@@ -67,7 +67,7 @@ export class Cube {
 				material = new THREE.MeshStandardMaterial({
 					color: 0x00ff00,
 					emissive: 0x00ff00,
-					emissiveIntensity: 0.5,
+					emissiveIntensity: 1.0,
 					metalness: 0.8,
 					roughness: 0.2,
 				});
@@ -76,7 +76,7 @@ export class Cube {
 				material = new THREE.MeshStandardMaterial({
 					color: 0x0000ff,
 					emissive: 0x0000ff,
-					emissiveIntensity: 0.5,
+					emissiveIntensity: 1.0,
 					metalness: 0.8,
 					roughness: 0.2,
 				});
@@ -85,7 +85,7 @@ export class Cube {
 				material = new THREE.MeshStandardMaterial({
 					color: 0xffff00,
 					emissive: 0xffff00,
-					emissiveIntensity: 0.5,
+					emissiveIntensity: 1.0,
 					metalness: 0.8,
 					roughness: 0.2,
 				});
@@ -93,8 +93,8 @@ export class Cube {
 			case 'black':
 				material = new THREE.MeshStandardMaterial({
 					color: 0x000000,
-					emissive: 0x330033,
-					emissiveIntensity: 0.3,
+					emissive: 0xff00ff,
+					emissiveIntensity: 0.8,
 					metalness: 0.9,
 					roughness: 0.1,
 				});
@@ -103,18 +103,18 @@ export class Cube {
 				material = new THREE.MeshStandardMaterial({
 					color: 0xffffff,
 					emissive: 0xffffff,
-					emissiveIntensity: 0.3,
+					emissiveIntensity: 0.8,
 					metalness: 0.8,
 					roughness: 0.2,
 				});
 		}
 
-		// Add wireframe overlay for neon grid effect
+		// Add thicker wireframe overlay for enhanced visibility
 		const wireframe = new THREE.LineSegments(
 			new THREE.EdgesGeometry(geometry),
 			new THREE.LineBasicMaterial({
 				color: this.getWireframeColor(),
-				linewidth: 2,
+				linewidth: 3, // Thicker lines
 			})
 		);
 
@@ -128,6 +128,14 @@ export class Cube {
 		// Add wireframe as child of the mesh
 		this.mesh.add(wireframe);
 
+		// Add glow light for extra visibility on special cubes
+		if (this.type === 'advantage' || this.type === 'forbidden') {
+			const glowColor = this.type === 'advantage' ? 0x00ff00 : 0xff0000;
+			const glowLight = new THREE.PointLight(glowColor, 0.8, 3);
+			glowLight.position.set(0, 0, 0);
+			this.mesh.add(glowLight);
+		}
+
 		// Add to scene
 		this.game.scene.add(this.mesh);
 	}
@@ -137,9 +145,9 @@ export class Cube {
 			case 'normal':
 				return 0xffffff; // White outline for normal cubes
 			case 'advantage':
-				return 0x55ff55; // Bright green outline
+				return 0x00ff00; // Pure green outline (brighter)
 			case 'forbidden':
-				return 0xff0000; // Red outline for forbidden cubes
+				return 0xff0000; // Pure red outline (brighter)
 			case 'red':
 				return 0xff5555;
 			case 'green':

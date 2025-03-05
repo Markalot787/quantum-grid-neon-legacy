@@ -41,8 +41,8 @@ export class Game {
 			speed: 0.5,
 			amplitude: 5,
 			angle: 0,
-			basePosition: new THREE.Vector3(0, 20, 30),
-			lookAtPosition: new THREE.Vector3(0, 0, 0),
+			basePosition: new THREE.Vector3(0, 18, 25),
+			lookAtPosition: new THREE.Vector3(0, 0, 7),
 		};
 
 		// Post-processing properties
@@ -57,15 +57,21 @@ export class Game {
 		// Create scene
 		this.scene = new THREE.Scene();
 
-		// Create camera
+		// Create camera with better angle for platform visibility
 		this.camera = new THREE.PerspectiveCamera(
-			75,
+			60, // Wider FOV for better visibility
 			window.innerWidth / window.innerHeight,
 			0.1,
 			1000
 		);
-		this.camera.position.copy(this.cameraAnimation.basePosition);
-		this.camera.lookAt(this.cameraAnimation.lookAtPosition);
+
+		// Instead of using animation base position, set a fixed position for better visibility
+		this.camera.position.set(0, 18, 25); // Higher and further back for better platform view
+		this.camera.lookAt(0, 0, 7); // Look at the middle of the platform
+
+		// Update animation base position to match our new better position
+		this.cameraAnimation.basePosition = new THREE.Vector3(0, 18, 25);
+		this.cameraAnimation.lookAtPosition = new THREE.Vector3(0, 0, 7);
 
 		// Create renderer
 		this.setupRenderer();
@@ -203,13 +209,13 @@ export class Game {
 	}
 
 	setupLights() {
-		// Ambient light for base illumination - increased intensity for better visibility
-		const ambientLight = new THREE.AmbientLight(0x404040, 0.8);
+		// Very bright ambient light for maximum visibility
+		const ambientLight = new THREE.AmbientLight(0xffffff, 1.0);
 		this.scene.add(ambientLight);
 
-		// Main directional light - increased intensity
-		const directionalLight = new THREE.DirectionalLight(0xffffff, 1.0);
-		directionalLight.position.set(5, 10, 7);
+		// Powerful directional light - significantly increased intensity
+		const directionalLight = new THREE.DirectionalLight(0xffffff, 1.5);
+		directionalLight.position.set(5, 15, 7);
 		directionalLight.castShadow = true;
 
 		// Configure shadow properties
@@ -224,7 +230,7 @@ export class Game {
 
 		this.scene.add(directionalLight);
 
-		// Add colored point lights for neon effect - increased intensity
+		// Add strong colored point lights for enhanced visibility and neon effect
 		const colors = [0xff00ff, 0x00ffff, 0xffff00];
 		const positions = [
 			[-10, 5, 5],
@@ -233,21 +239,36 @@ export class Game {
 		];
 
 		for (let i = 0; i < colors.length; i++) {
-			const pointLight = new THREE.PointLight(colors[i], 0.8, 20);
+			const pointLight = new THREE.PointLight(colors[i], 1.0, 30);
 			pointLight.position.set(...positions[i]);
 			this.scene.add(pointLight);
 		}
 
+		// Add a bright spotlight directly above the platform for maximum visibility
+		const platformSpotlight = new THREE.SpotLight(
+			0xffffff,
+			1.5,
+			30,
+			Math.PI / 3,
+			0.2,
+			1
+		);
+		platformSpotlight.position.set(0, 15, 7);
+		platformSpotlight.target.position.set(0, 0, 7);
+		platformSpotlight.castShadow = true;
+		this.scene.add(platformSpotlight);
+		this.scene.add(platformSpotlight.target);
+
 		// Add a spotlight that follows the player for better visibility
 		const playerSpotlight = new THREE.SpotLight(
 			0xffffff,
-			1.0,
+			1.2,
 			15,
 			Math.PI / 4,
 			0.2,
 			1
 		);
-		playerSpotlight.position.set(0, 8, 0);
+		playerSpotlight.position.set(0, 10, 0);
 		playerSpotlight.target = this.player ? this.player.mesh : this.scene;
 		playerSpotlight.castShadow = true;
 		this.scene.add(playerSpotlight);

@@ -24,18 +24,18 @@ export class Level {
 		const width = this.game.settings.stageWidth;
 		const length = this.game.settings.stageLength;
 
-		// Create grid texture
+		// Create grid texture with much brighter colors
 		const gridTexture = this.createGridTexture();
 
 		// Create platform geometry
 		const geometry = new THREE.BoxGeometry(width, 1, length);
 
-		// Use a lighter material for better visibility
+		// Use a MUCH lighter material for better visibility
 		const material = new THREE.MeshStandardMaterial({
-			color: 0x444444, // Light gray for visibility
-			emissive: 0x111111, // Subtle glow
-			emissiveIntensity: 0.8, // Increase for visibility
-			metalness: 0.7,
+			color: 0x888888, // Much lighter gray for better visibility
+			emissive: 0x333333, // Stronger glow
+			emissiveIntensity: 1.0, // Maximum emissive
+			metalness: 0.5,
 			roughness: 0.3,
 			map: gridTexture,
 		});
@@ -46,7 +46,7 @@ export class Level {
 		this.platformMesh.receiveShadow = true;
 		this.game.scene.add(this.platformMesh);
 
-		// Add grid lines on top of platform for enhanced visual effect
+		// Add highly visible grid lines on top of platform
 		this.addGridLines(width, length);
 
 		// Store dimensions
@@ -70,13 +70,13 @@ export class Level {
 		canvas.height = 512;
 		const context = canvas.getContext('2d');
 
-		// Fill background with lighter color
-		context.fillStyle = '#444444';
+		// Fill background with much lighter color
+		context.fillStyle = '#777777';
 		context.fillRect(0, 0, 512, 512);
 
-		// Draw grid lines - brighter and more visible
-		context.strokeStyle = '#00aaff';
-		context.lineWidth = 2; // Thicker lines
+		// Draw grid lines - much brighter and more visible
+		context.strokeStyle = '#00ffff'; // Bright cyan for maximum contrast
+		context.lineWidth = 3; // Thicker lines
 
 		// Draw vertical lines
 		const cellSize = 32;
@@ -84,7 +84,7 @@ export class Level {
 			context.beginPath();
 			context.moveTo(i, 0);
 			context.lineTo(i, 512);
-			context.globalAlpha = i % (cellSize * 2) === 0 ? 0.8 : 0.5; // Higher opacity
+			context.globalAlpha = i % (cellSize * 2) === 0 ? 1.0 : 0.8; // Maximum opacity
 			context.stroke();
 		}
 
@@ -93,7 +93,7 @@ export class Level {
 			context.beginPath();
 			context.moveTo(0, i);
 			context.lineTo(512, i);
-			context.globalAlpha = i % (cellSize * 2) === 0 ? 0.8 : 0.5; // Higher opacity
+			context.globalAlpha = i % (cellSize * 2) === 0 ? 1.0 : 0.8; // Maximum opacity
 			context.stroke();
 		}
 
@@ -101,22 +101,21 @@ export class Level {
 		const texture = new THREE.CanvasTexture(canvas);
 		texture.wrapS = THREE.RepeatWrapping;
 		texture.wrapT = THREE.RepeatWrapping;
-		texture.repeat.set(2, 8); // Repeat the texture to cover the platform
+		texture.repeat.set(width / 4, length / 4);
 
 		return texture;
 	}
 
 	addGridLines(width, length) {
-		// Create grid lines material - brighter and more visible
+		// Create MUCH brighter grid lines for maximum visibility
 		const material = new THREE.LineBasicMaterial({
-			color: 0x00aaff, // Bright blue for contrast
-			transparent: true,
-			opacity: 0.6, // Higher opacity for visibility
+			color: 0x00ffff, // Bright cyan for high contrast
+			transparent: false, // No transparency for better visibility
+			linewidth: 2,
 		});
 
-		// Create horizontal grid lines
-		const horizontalStep = 1;
-		for (let z = 0; z <= length; z += horizontalStep) {
+		// Horizontal lines (along z-axis)
+		for (let z = 0; z <= length; z++) {
 			const points = [
 				new THREE.Vector3(-width / 2, 0.01, z),
 				new THREE.Vector3(width / 2, 0.01, z),
@@ -126,9 +125,8 @@ export class Level {
 			this.platformMesh.add(line);
 		}
 
-		// Create vertical grid lines
-		const verticalStep = 1;
-		for (let x = -width / 2; x <= width / 2; x += verticalStep) {
+		// Vertical lines (along x-axis)
+		for (let x = -width / 2; x <= width / 2; x += 1) {
 			const points = [
 				new THREE.Vector3(x, 0.01, 0),
 				new THREE.Vector3(x, 0.01, length),
