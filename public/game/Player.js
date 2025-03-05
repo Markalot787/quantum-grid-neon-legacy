@@ -50,7 +50,7 @@ export class Player {
 
 		// Create player mesh
 		this.mesh = new THREE.Mesh(geometry, material);
-		this.mesh.position.y = this.size * 0.7; // Ensure player is above the platform
+		this.mesh.position.y = 0.7; // Raised from platform
 		this.mesh.position.x = this.position.x;
 		this.mesh.position.z = this.position.z;
 		this.mesh.castShadow = true;
@@ -114,67 +114,63 @@ export class Player {
 
 	updateMeshPosition() {
 		if (this.mesh) {
-			this.mesh.position.set(
-				this.position.x,
-				this.size * 0.7, // Half height + small gap
-				this.position.z
-			);
+			this.mesh.position.x = this.position.x;
+			this.mesh.position.z = this.position.z;
+			this.mesh.position.y = 0.7;
 		}
 	}
 
 	move(direction) {
-		// Prevent rapid movement
-		const now = Date.now();
-		if (now - this.lastMoveTime < this.moveCooldown) {
-			return;
-		}
-		this.lastMoveTime = now;
+		// CRITICAL FIX: Store current position for animation
+		this.startPosition = new THREE.Vector3(this.position.x, 0, this.position.z);
 
-		// Get current position
-		const { x, z } = this.position;
-		const stageWidth = this.game.settings.stageWidth;
-		const stageLength = this.game.settings.stageLength;
-
-		// Calculate new position based on direction
-		let newX = x;
-		let newZ = z;
-
+		// Update target position based on direction
 		switch (direction) {
-			case 'forward':
-				newZ = z + 1;
-				break;
-			case 'backward':
-				newZ = z - 1;
-				break;
 			case 'left':
-				newX = x - 1;
+				if (this.position.x > -Math.floor(this.game.settings.stageWidth / 2)) {
+					this.targetPosition = new THREE.Vector3(
+						this.position.x - 1,
+						0,
+						this.position.z
+					);
+					this.isMoving = true;
+					this.moveProgress = 0;
+				}
 				break;
 			case 'right':
-				newX = x + 1;
+				if (this.position.x < Math.floor(this.game.settings.stageWidth / 2)) {
+					this.targetPosition = new THREE.Vector3(
+						this.position.x + 1,
+						0,
+						this.position.z
+					);
+					this.isMoving = true;
+					this.moveProgress = 0;
+				}
+				break;
+			case 'up':
+				if (this.position.z < this.game.settings.stageLength - 1) {
+					this.targetPosition = new THREE.Vector3(
+						this.position.x,
+						0,
+						this.position.z + 1
+					);
+					this.isMoving = true;
+					this.moveProgress = 0;
+				}
+				break;
+			case 'down':
+				if (this.position.z > 0) {
+					this.targetPosition = new THREE.Vector3(
+						this.position.x,
+						0,
+						this.position.z - 1
+					);
+					this.isMoving = true;
+					this.moveProgress = 0;
+				}
 				break;
 		}
-
-		// Check boundaries
-		const halfWidth = Math.floor(stageWidth / 2);
-		if (newX < -halfWidth || newX > halfWidth) {
-			return;
-		}
-
-		if (newZ < 0 || newZ >= stageLength) {
-			return;
-		}
-
-		// Check if the platform exists at this position
-		if (!this.game.level.isPlatformAt(newX, newZ)) {
-			return;
-		}
-
-		// Move player
-		this.position.x = newX;
-		this.position.z = newZ;
-
-		// Update mesh position
-		this.updateMeshPosition();
 	}
 
 	getPosition() {
@@ -191,16 +187,18 @@ export class Player {
 
 			if (this.moveProgress >= 1) {
 				// Movement complete
-				this.position.copy(this.targetPosition);
+				this.position.x = this.targetPosition.x;
+				this.position.z = this.targetPosition.z;
 				this.isMoving = false;
 				this.moveProgress = 0;
 			} else {
 				// Interpolate position
-				this.position.lerpVectors(
-					this.startPosition,
-					this.targetPosition,
-					this.moveProgress
-				);
+				this.position.x =
+					this.startPosition.x +
+					(this.targetPosition.x - this.startPosition.x) * this.moveProgress;
+				this.position.z =
+					this.startPosition.z +
+					(this.targetPosition.z - this.startPosition.z) * this.moveProgress;
 			}
 
 			// Update mesh position

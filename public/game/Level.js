@@ -53,7 +53,7 @@ export class Level {
 			new THREE.BoxGeometry(width, 1, length),
 			material
 		);
-		this.platformMesh.position.set(0, -0.5, length / 2);
+		this.platformMesh.position.set(0, 0, length / 2);
 		this.platformMesh.receiveShadow = true;
 
 		console.log('DEBUG - Platform mesh created:', {
@@ -123,7 +123,7 @@ export class Level {
 		const texture = new THREE.CanvasTexture(canvas);
 		texture.wrapS = THREE.RepeatWrapping;
 		texture.wrapT = THREE.RepeatWrapping;
-		texture.repeat.set(width / 4, length / 4);
+		texture.repeat.set(4, 4);
 
 		return texture;
 	}

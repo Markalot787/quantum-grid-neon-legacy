@@ -164,32 +164,41 @@ export class Cube {
 	}
 
 	update(delta) {
-		// Move cube towards player at consistent speed
+		// CRITICAL FIX: Ensure consistent movement speed
 		const speed = this.game.settings.cubeSpeed * delta;
+
+		// Move cube towards player at consistent speed
 		this.position.z -= speed;
+
+		// CRITICAL FIX: Update mesh position directly
 		this.mesh.position.z = this.position.z;
 
-		// Roll the cube as it moves - pronounced rolling animation
-		this.rollCube(speed);
+		// CRITICAL FIX: Implement proper rolling animation
+		// Calculate rotation based on distance moved
+		// A full rotation is 2π radians, which should occur when the cube moves a distance equal to its circumference
+		// For a unit cube, one face is 1 unit, so a 90-degree rotation per unit of distance
+		const rotationAmount = (Math.PI / 2) * speed;
+
+		// Apply rotation around X-axis for forward movement
+		this.mesh.rotateX(rotationAmount);
 
 		// Apply subtle additional rotation for visual flair - reduced for consistency
 		this.mesh.rotateOnAxis(this.rotation.axis, this.rotation.speed * 0.3);
 
 		// Check for collision with player
 		this.checkPlayerCollision();
-	}
 
-	rollCube(distance) {
-		// Calculate rotation based on distance moved
-		// A full rotation is 2π radians, which should occur when the cube moves a distance equal to its circumference
-		// For a unit cube, one face is 1 unit, so a 90-degree rotation per unit of distance
-		const rotationAmount = (Math.PI / 2) * distance;
-
-		// Determine rotation axis (x-axis for movement along z)
-		this.mesh.rotateX(rotationAmount);
+		// CRITICAL FIX: Check if cube has fallen off the platform
+		if (this.position.z < -2) {
+			// Remove cube if it falls off
+			this.game.level.removeCube(this);
+		}
 	}
 
 	checkPlayerCollision() {
+		// CRITICAL FIX: Ensure player exists before checking collision
+		if (!this.game.player || !this.game.player.mesh) return;
+
 		const playerPos = this.game.player.getPosition();
 		const cubePos = this.mesh.position;
 

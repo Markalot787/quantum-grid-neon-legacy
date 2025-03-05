@@ -66,8 +66,8 @@ export class Game {
 			1000
 		);
 
-		// Instead of using animation base position, set a fixed position for better visibility
-		this.camera.position.set(0, 18, 25); // Higher and further back for better platform view
+		// Position camera for optimal view
+		this.camera.position.set(0, 15, 20); // Higher and further back for better platform view
 		this.camera.lookAt(0, 0, 7); // Look at the middle of the platform
 
 		console.log('DEBUG - Camera setup:', {
@@ -78,7 +78,7 @@ export class Game {
 		});
 
 		// Update animation base position to match our new better position
-		this.cameraAnimation.basePosition = new THREE.Vector3(0, 18, 25);
+		this.cameraAnimation.basePosition = new THREE.Vector3(0, 15, 20);
 		this.cameraAnimation.lookAtPosition = new THREE.Vector3(0, 0, 7);
 
 		// Create renderer
@@ -227,7 +227,7 @@ export class Game {
 		const ambientLight = new THREE.AmbientLight(0xffffff, 1.0); // Pure white, full intensity
 		this.scene.add(ambientLight);
 
-		// Add directional light from above
+		// Add stronger directional light from above
 		const directionalLight = new THREE.DirectionalLight(0xffffff, 1.5);
 		directionalLight.position.set(0, 10, 5);
 		directionalLight.castShadow = true;
@@ -244,7 +244,7 @@ export class Game {
 
 		this.scene.add(directionalLight);
 
-		// Add point lights for enhanced visibility
+		// Add brighter point lights for enhanced visibility
 		const colors = [0x00ffff, 0xff00ff, 0xffff00];
 		const positions = [
 			[-5, 5, 0],
@@ -285,7 +285,18 @@ export class Game {
 	}
 
 	handleKeyDown(e) {
-		if (this.paused || this.gameOver) return;
+		if (!this.gameStarted || this.gameOver || this.paused) {
+			// Only handle ESC key when game is not started
+			if (e.key === 'Escape') {
+				this.paused = !this.paused;
+				if (this.paused) {
+					this.ui.showPauseScreen();
+				} else {
+					this.ui.hidePauseScreen();
+				}
+			}
+			return;
+		}
 
 		const key = e.key.toLowerCase();
 
@@ -630,7 +641,9 @@ export class Game {
 	}
 
 	update() {
-		if (this.paused || this.gameOver) return;
+		if (!this.gameStarted || this.gameOver) {
+			return;
+		}
 
 		const delta = this.clock.getDelta();
 
@@ -724,10 +737,12 @@ export class Game {
 		});
 
 		// Render scene
-		if (this.composer) {
+		if (this.composer && this.composer.renderer) {
 			this.composer.render();
-		} else {
+		} else if (this.renderer) {
 			this.renderer.render(this.scene, this.camera);
+		} else {
+			console.error('DEBUG - No renderer available!');
 		}
 	}
 }
