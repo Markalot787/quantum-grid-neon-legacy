@@ -209,70 +209,54 @@ export class Game {
 	}
 
 	setupLights() {
-		// Very bright ambient light for maximum visibility
-		const ambientLight = new THREE.AmbientLight(0xffffff, 1.0);
+		// Add much brighter ambient light
+		const ambientLight = new THREE.AmbientLight(0xffffff, 1.0); // Pure white, full intensity
 		this.scene.add(ambientLight);
 
-		// Powerful directional light - significantly increased intensity
+		// Add directional light from above
 		const directionalLight = new THREE.DirectionalLight(0xffffff, 1.5);
-		directionalLight.position.set(5, 15, 7);
+		directionalLight.position.set(0, 10, 5);
 		directionalLight.castShadow = true;
 
-		// Configure shadow properties
+		// Improve shadow quality
 		directionalLight.shadow.mapSize.width = 2048;
 		directionalLight.shadow.mapSize.height = 2048;
 		directionalLight.shadow.camera.near = 0.5;
 		directionalLight.shadow.camera.far = 50;
-		directionalLight.shadow.camera.left = -15;
-		directionalLight.shadow.camera.right = 15;
-		directionalLight.shadow.camera.top = 15;
-		directionalLight.shadow.camera.bottom = -15;
+		directionalLight.shadow.camera.left = -10;
+		directionalLight.shadow.camera.right = 10;
+		directionalLight.shadow.camera.top = 10;
+		directionalLight.shadow.camera.bottom = -10;
 
 		this.scene.add(directionalLight);
 
-		// Add strong colored point lights for enhanced visibility and neon effect
-		const colors = [0xff00ff, 0x00ffff, 0xffff00];
+		// Add point lights for enhanced visibility
+		const colors = [0x00ffff, 0xff00ff, 0xffff00];
 		const positions = [
-			[-10, 5, 5],
-			[10, 5, -5],
-			[0, 5, 10],
+			[-5, 5, 0],
+			[5, 5, 0],
+			[0, 5, 5],
 		];
 
-		for (let i = 0; i < colors.length; i++) {
-			const pointLight = new THREE.PointLight(colors[i], 1.0, 30);
-			pointLight.position.set(...positions[i]);
-			this.scene.add(pointLight);
-		}
+		colors.forEach((color, i) => {
+			const light = new THREE.PointLight(color, 1.0, 30);
+			light.position.set(...positions[i]);
+			this.scene.add(light);
+		});
 
-		// Add a bright spotlight directly above the platform for maximum visibility
-		const platformSpotlight = new THREE.SpotLight(
+		// Add spotlight that follows platform
+		const spotlight = new THREE.SpotLight(
 			0xffffff,
 			1.5,
 			30,
-			Math.PI / 3,
-			0.2,
-			1
-		);
-		platformSpotlight.position.set(0, 15, 7);
-		platformSpotlight.target.position.set(0, 0, 7);
-		platformSpotlight.castShadow = true;
-		this.scene.add(platformSpotlight);
-		this.scene.add(platformSpotlight.target);
-
-		// Add a spotlight that follows the player for better visibility
-		const playerSpotlight = new THREE.SpotLight(
-			0xffffff,
-			1.2,
-			15,
 			Math.PI / 4,
-			0.2,
-			1
+			0.5,
+			2
 		);
-		playerSpotlight.position.set(0, 10, 0);
-		playerSpotlight.target = this.player ? this.player.mesh : this.scene;
-		playerSpotlight.castShadow = true;
-		this.scene.add(playerSpotlight);
-		this.playerSpotlight = playerSpotlight; // Store reference for updating
+		spotlight.position.set(0, 15, 0);
+		spotlight.target.position.set(0, 0, 0);
+		this.scene.add(spotlight);
+		this.scene.add(spotlight.target);
 	}
 
 	onWindowResize() {
@@ -644,13 +628,6 @@ export class Game {
 		// Update player
 		if (this.player) {
 			this.player.update(delta);
-
-			// Update the spotlight to follow the player
-			if (this.playerSpotlight && this.player.mesh) {
-				const pos = this.player.getPosition();
-				this.playerSpotlight.position.set(pos.x, 8, pos.z);
-				this.playerSpotlight.target = this.player.mesh;
-			}
 		}
 
 		// Update level

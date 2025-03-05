@@ -27,9 +27,6 @@ export class Level {
 		// Create grid texture with much brighter colors
 		const gridTexture = this.createGridTexture();
 
-		// Create platform geometry
-		const geometry = new THREE.BoxGeometry(width, 1, length);
-
 		// Use a MUCH lighter material for better visibility
 		const material = new THREE.MeshStandardMaterial({
 			color: 0x888888, // Much lighter gray for better visibility
@@ -41,21 +38,23 @@ export class Level {
 		});
 
 		// Create platform mesh
-		this.platformMesh = new THREE.Mesh(geometry, material);
-		this.platformMesh.position.set(0, -0.5, length / 2); // Ensure proper positioning
+		this.platformMesh = new THREE.Mesh(
+			new THREE.BoxGeometry(width, 1, length),
+			material
+		);
+		this.platformMesh.position.set(0, -0.5, length / 2);
 		this.platformMesh.receiveShadow = true;
 		this.game.scene.add(this.platformMesh);
 
-		// Add highly visible grid lines on top of platform
+		// Add highly visible grid lines
 		this.addGridLines(width, length);
 
 		// Store dimensions
 		this.platformWidth = width;
 		this.platformLength = length;
 
-		// Create platform grid for gameplay
+		// Create platform grid
 		this.platform = [];
-
 		for (let x = -Math.floor(width / 2); x <= Math.floor(width / 2); x++) {
 			for (let z = 0; z < length; z++) {
 				this.platform.push({ x, z, exists: true });
@@ -64,7 +63,6 @@ export class Level {
 	}
 
 	createGridTexture() {
-		// Create a canvas for the grid texture
 		const canvas = document.createElement('canvas');
 		canvas.width = 512;
 		canvas.height = 512;
@@ -97,7 +95,6 @@ export class Level {
 			context.stroke();
 		}
 
-		// Create texture from canvas
 		const texture = new THREE.CanvasTexture(canvas);
 		texture.wrapS = THREE.RepeatWrapping;
 		texture.wrapT = THREE.RepeatWrapping;
@@ -107,14 +104,13 @@ export class Level {
 	}
 
 	addGridLines(width, length) {
-		// Create MUCH brighter grid lines for maximum visibility
 		const material = new THREE.LineBasicMaterial({
 			color: 0x00ffff, // Bright cyan for high contrast
 			transparent: false, // No transparency for better visibility
 			linewidth: 2,
 		});
 
-		// Horizontal lines (along z-axis)
+		// Horizontal lines
 		for (let z = 0; z <= length; z++) {
 			const points = [
 				new THREE.Vector3(-width / 2, 0.01, z),
@@ -125,7 +121,7 @@ export class Level {
 			this.platformMesh.add(line);
 		}
 
-		// Vertical lines (along x-axis)
+		// Vertical lines
 		for (let x = -width / 2; x <= width / 2; x += 1) {
 			const points = [
 				new THREE.Vector3(x, 0.01, 0),
