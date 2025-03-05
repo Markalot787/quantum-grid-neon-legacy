@@ -23,8 +23,36 @@ export class Cube {
 		const geometry = new THREE.BoxGeometry(this.size, this.size, this.size);
 		let material;
 
-		// Enhanced materials with emissive properties for neon effect
+		// Enhanced materials to match original game's colors with better visibility
 		switch (this.type) {
+			case 'normal':
+				material = new THREE.MeshStandardMaterial({
+					color: 0xaaaaaa, // Gray for normal cubes like original game
+					emissive: 0x555555,
+					emissiveIntensity: 0.3,
+					metalness: 0.7,
+					roughness: 0.3,
+				});
+				break;
+			case 'advantage':
+				material = new THREE.MeshStandardMaterial({
+					color: 0x00ff00, // Green for advantage cubes
+					emissive: 0x00ff00,
+					emissiveIntensity: 0.5,
+					metalness: 0.7,
+					roughness: 0.3,
+				});
+				break;
+			case 'forbidden':
+				material = new THREE.MeshStandardMaterial({
+					color: 0x000000, // Black for forbidden cubes
+					emissive: 0x330000, // Slight red glow
+					emissiveIntensity: 0.3,
+					metalness: 0.8,
+					roughness: 0.2,
+				});
+				break;
+			// Fallback for any other types or for backward compatibility
 			case 'red':
 				material = new THREE.MeshStandardMaterial({
 					color: 0xff0000,
@@ -104,6 +132,12 @@ export class Cube {
 
 	getWireframeColor() {
 		switch (this.type) {
+			case 'normal':
+				return 0xffffff; // White outline for normal cubes
+			case 'advantage':
+				return 0x55ff55; // Bright green outline
+			case 'forbidden':
+				return 0xff0000; // Red outline for forbidden cubes
 			case 'red':
 				return 0xff5555;
 			case 'green':
@@ -124,11 +158,11 @@ export class Cube {
 		const speed = this.game.settings.cubeSpeed * delta;
 		this.mesh.position.z -= speed;
 
-		// Roll the cube as it moves
+		// Roll the cube as it moves - using more pronounced rolling
 		this.rollCube(speed);
 
-		// Apply additional rotation for visual flair
-		this.mesh.rotateOnAxis(this.rotation.axis, this.rotation.speed);
+		// Apply additional rotation for visual flair - reduced for more consistent movement
+		this.mesh.rotateOnAxis(this.rotation.axis, this.rotation.speed * 0.5);
 
 		// Check for collision with player
 		this.checkPlayerCollision();

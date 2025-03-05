@@ -203,12 +203,12 @@ export class Game {
 	}
 
 	setupLights() {
-		// Ambient light for base illumination
-		const ambientLight = new THREE.AmbientLight(0x111122, 0.4);
+		// Ambient light for base illumination - increased intensity for better visibility
+		const ambientLight = new THREE.AmbientLight(0x222244, 0.6);
 		this.scene.add(ambientLight);
 
-		// Main directional light
-		const directionalLight = new THREE.DirectionalLight(0xffffff, 0.8);
+		// Main directional light - increased intensity
+		const directionalLight = new THREE.DirectionalLight(0xffffff, 1.0);
 		directionalLight.position.set(5, 10, 7);
 		directionalLight.castShadow = true;
 
@@ -224,7 +224,7 @@ export class Game {
 
 		this.scene.add(directionalLight);
 
-		// Add colored point lights for neon effect
+		// Add colored point lights for neon effect - increased intensity
 		const colors = [0xff00ff, 0x00ffff, 0xffff00];
 		const positions = [
 			[-10, 5, 5],
@@ -233,7 +233,7 @@ export class Game {
 		];
 
 		for (let i = 0; i < colors.length; i++) {
-			const pointLight = new THREE.PointLight(colors[i], 0.6, 20);
+			const pointLight = new THREE.PointLight(colors[i], 0.8, 20);
 			pointLight.position.set(...positions[i]);
 			this.scene.add(pointLight);
 
@@ -241,6 +241,21 @@ export class Game {
 			// const helper = new THREE.PointLightHelper(pointLight, 0.5);
 			// this.scene.add(helper);
 		}
+
+		// Add a spotlight that follows above the player for better visibility
+		const playerSpotlight = new THREE.SpotLight(
+			0xffffff,
+			1.0,
+			15,
+			Math.PI / 4,
+			0.2,
+			1
+		);
+		playerSpotlight.position.set(0, 8, 0);
+		playerSpotlight.target = this.player ? this.player.mesh : this.scene;
+		playerSpotlight.castShadow = true;
+		this.scene.add(playerSpotlight);
+		this.playerSpotlight = playerSpotlight; // Store reference for updating
 	}
 
 	onWindowResize() {
@@ -612,6 +627,13 @@ export class Game {
 		// Update player
 		if (this.player) {
 			this.player.update(delta);
+
+			// Update the spotlight to follow the player
+			if (this.playerSpotlight && this.player.mesh) {
+				const pos = this.player.getPosition();
+				this.playerSpotlight.position.set(pos.x, 8, pos.z);
+				this.playerSpotlight.target = this.player.mesh;
+			}
 		}
 
 		// Update level

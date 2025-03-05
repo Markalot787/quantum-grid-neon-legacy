@@ -30,13 +30,13 @@ export class Level {
 		// Create platform geometry
 		const geometry = new THREE.BoxGeometry(width, 1, length);
 
-		// Create material with grid texture
+		// Create material with grid texture - using much lighter color for visibility
 		const material = new THREE.MeshStandardMaterial({
-			color: 0x0a0a2a,
-			emissive: 0x0a0a2a,
-			emissiveIntensity: 0.2,
-			metalness: 0.8,
-			roughness: 0.2,
+			color: 0x444444, // Light gray for visibility
+			emissive: 0x222222, // Subtle glow
+			emissiveIntensity: 0.5, // Increase for visibility
+			metalness: 0.7,
+			roughness: 0.3,
 			map: gridTexture,
 		});
 
@@ -70,13 +70,13 @@ export class Level {
 		canvas.height = 512;
 		const context = canvas.getContext('2d');
 
-		// Fill background
-		context.fillStyle = '#0a0a2a';
+		// Fill background - much lighter for visibility
+		context.fillStyle = '#444444';
 		context.fillRect(0, 0, 512, 512);
 
 		// Draw grid lines
-		context.strokeStyle = '#0088ff';
-		context.lineWidth = 1;
+		context.strokeStyle = '#00aaff';
+		context.lineWidth = 2; // Thicker lines for visibility
 
 		// Draw vertical lines
 		const cellSize = 32;
@@ -84,7 +84,7 @@ export class Level {
 			context.beginPath();
 			context.moveTo(i, 0);
 			context.lineTo(i, 512);
-			context.globalAlpha = i % (cellSize * 2) === 0 ? 0.5 : 0.2;
+			context.globalAlpha = i % (cellSize * 2) === 0 ? 0.8 : 0.5; // Higher opacity
 			context.stroke();
 		}
 
@@ -93,7 +93,7 @@ export class Level {
 			context.beginPath();
 			context.moveTo(0, i);
 			context.lineTo(512, i);
-			context.globalAlpha = i % (cellSize * 2) === 0 ? 0.5 : 0.2;
+			context.globalAlpha = i % (cellSize * 2) === 0 ? 0.8 : 0.5; // Higher opacity
 			context.stroke();
 		}
 
@@ -111,7 +111,7 @@ export class Level {
 		const material = new THREE.LineBasicMaterial({
 			color: 0x00aaff,
 			transparent: true,
-			opacity: 0.3,
+			opacity: 0.6, // Higher opacity for visibility
 		});
 
 		// Create horizontal grid lines
