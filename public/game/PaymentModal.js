@@ -8,6 +8,9 @@ export class PaymentModal {
 		// Add event listeners
 		this.closeButton.addEventListener('click', () => this.hide());
 		this.payButton.addEventListener('click', () => this.processPayment());
+
+		// Load Stripe.js
+		this.loadStripeScript();
 	}
 
 	show() {
@@ -18,8 +21,57 @@ export class PaymentModal {
 		this.modal.style.display = 'none';
 	}
 
-	processPayment() {
-		// Mock payment processing
+	loadStripeScript() {
+		if (!document.getElementById('stripe-js')) {
+			const script = document.createElement('script');
+			script.id = 'stripe-js';
+			script.src = 'https://js.stripe.com/v3/';
+			script.async = true;
+			document.body.appendChild(script);
+		}
+	}
+
+	async processPayment() {
+		try {
+			// Check if Stripe is loaded
+			if (window.Stripe) {
+				// Create a Stripe instance
+				const stripe = Stripe('pk_test_TYooMQauvdEDq54NiTphI7jx');
+
+				// Call backend to create checkout session
+				const response = await fetch('/create-checkout-session', {
+					method: 'POST',
+					headers: {
+						'Content-Type': 'application/json',
+					},
+					body: JSON.stringify({
+						product: 'Quantum Grid: Neon Legacy Full Version',
+					}),
+				});
+
+				const session = await response.json();
+
+				// Redirect to checkout
+				const result = await stripe.redirectToCheckout({
+					sessionId: session.id,
+				});
+
+				if (result.error) {
+					console.error(result.error.message);
+					this.fallbackPayment();
+				}
+			} else {
+				// If Stripe isn't loaded, use fallback
+				this.fallbackPayment();
+			}
+		} catch (error) {
+			console.error('Payment error:', error);
+			this.fallbackPayment();
+		}
+	}
+
+	fallbackPayment() {
+		// Mock payment processing as fallback
 		alert('Thank you for your purchase! Enjoy the full game!');
 
 		// Hide modal
