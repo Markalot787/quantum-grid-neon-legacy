@@ -1,6 +1,7 @@
 export class UI {
 	constructor(game) {
 		this.game = game;
+		console.log('DEBUG - Initializing UI');
 
 		// Get UI elements
 		this.scoreElement = document.getElementById('score');
@@ -23,34 +24,65 @@ export class UI {
 			'payment-button-container'
 		);
 
+		// Log which elements were found and which weren't
+		console.log('DEBUG - UI Elements found:', {
+			score: !!this.scoreElement,
+			level: !!this.levelElement,
+			cubesLeft: !!this.cubesLeftElement,
+			lives: !!this.livesElement,
+			startScreen: !!this.startScreen,
+			gameOverScreen: !!this.gameOverScreen,
+			finalScore: !!this.finalScoreElement,
+			startButton: !!this.startButton,
+			restartButton: !!this.restartButton,
+			paymentModal: !!this.paymentModal,
+			paymentButtonContainer: !!this.paymentButtonContainer,
+		});
+
 		// Initialize event listeners
 		this.initEventListeners();
 	}
 
 	initEventListeners() {
 		// Start button
-		this.startButton.addEventListener('click', () => {
-			this.hideStartScreen();
-			this.game.startGame();
-		});
+		if (this.startButton) {
+			this.startButton.addEventListener('click', () => {
+				this.hideStartScreen();
+				this.game.startGame();
+			});
+			console.log('DEBUG - Start button event listener added');
+		} else {
+			console.warn('WARNING - Start button not found');
+		}
 
 		// Restart button
-		this.restartButton.addEventListener('click', () => {
-			this.hideGameOverScreen();
-			this.game.restartGame();
-		});
+		if (this.restartButton) {
+			this.restartButton.addEventListener('click', () => {
+				this.hideGameOverScreen();
+				this.game.restartGame();
+			});
+			console.log('DEBUG - Restart button event listener added');
+		} else {
+			console.warn('WARNING - Restart button not found');
+		}
 	}
 
 	updateScore(score) {
-		this.scoreElement.textContent = `Score: ${score}`;
+		if (this.scoreElement) {
+			this.scoreElement.textContent = `Score: ${score}`;
+		}
 	}
 
 	updateLevel(level) {
-		this.levelElement.textContent = `Level: ${level}`;
+		if (this.levelElement) {
+			this.levelElement.textContent = `Level: ${level}`;
+		}
 	}
 
 	updateCubesLeft(count) {
-		this.cubesLeftElement.textContent = `Cubes: ${count}`;
+		if (this.cubesLeftElement) {
+			this.cubesLeftElement.textContent = `Cubes: ${count}`;
+		}
 	}
 
 	updateLives(lives) {
@@ -77,65 +109,83 @@ export class UI {
 	}
 
 	showGameOverScreen(finalScore) {
-		this.finalScoreElement.textContent = finalScore;
-		this.gameOverScreen.style.display = 'flex';
+		if (this.finalScoreElement && this.gameOverScreen) {
+			this.finalScoreElement.textContent = finalScore;
+			this.gameOverScreen.style.display = 'flex';
+			console.log('DEBUG - Game over screen shown with score:', finalScore);
+		}
 	}
 
 	hideGameOverScreen() {
-		this.gameOverScreen.style.display = 'none';
+		if (this.gameOverScreen) {
+			this.gameOverScreen.style.display = 'none';
+			console.log('DEBUG - Game over screen hidden');
+		}
 	}
 
 	showStartScreen() {
-		this.startScreen.style.display = 'flex';
+		if (this.startScreen) {
+			this.startScreen.style.display = 'flex';
+			console.log('DEBUG - Start screen shown');
+		}
 	}
 
 	hideStartScreen() {
-		this.startScreen.style.display = 'none';
+		if (this.startScreen) {
+			this.startScreen.style.display = 'none';
+			console.log('DEBUG - Start screen hidden');
+		}
 	}
 
 	showPaymentModal() {
-		this.paymentModal.style.display = 'flex';
+		if (this.paymentModal && this.paymentButtonContainer) {
+			this.paymentModal.style.display = 'flex';
+			console.log('DEBUG - Payment modal shown');
 
-		// Clear previous buttons
-		this.paymentButtonContainer.innerHTML = '';
+			// Clear previous buttons
+			this.paymentButtonContainer.innerHTML = '';
 
-		// Initialize Stripe payment button
-		if (this.game.stripe) {
-			const checkoutButton = document.createElement('button');
-			checkoutButton.id = 'checkout-button';
-			checkoutButton.textContent = 'Unlock Full Game - $2.99';
-			this.paymentButtonContainer.appendChild(checkoutButton);
+			// Initialize Stripe payment button
+			if (this.game.stripe) {
+				const checkoutButton = document.createElement('button');
+				checkoutButton.id = 'checkout-button';
+				checkoutButton.textContent = 'Unlock Full Game - $2.99';
+				this.paymentButtonContainer.appendChild(checkoutButton);
 
-			checkoutButton.addEventListener('click', () => {
-				this.game.handlePayment();
+				checkoutButton.addEventListener('click', () => {
+					this.game.handlePayment();
+				});
+			}
+
+			// Add cancel button
+			const cancelButton = document.createElement('button');
+			cancelButton.id = 'cancel-payment-button';
+			cancelButton.textContent = 'Cancel';
+			cancelButton.style.backgroundColor = 'transparent';
+			cancelButton.style.color = '#ccc';
+			cancelButton.style.border = '2px solid #ccc';
+			this.paymentButtonContainer.appendChild(cancelButton);
+
+			// Add event listener to cancel button
+			cancelButton.addEventListener('click', () => {
+				this.hidePaymentModal();
+				this.hideGameOverScreen();
+				this.game.restartGame();
 			});
 		}
-
-		// Add cancel button
-		const cancelButton = document.createElement('button');
-		cancelButton.id = 'cancel-payment-button';
-		cancelButton.textContent = 'Cancel';
-		cancelButton.style.backgroundColor = 'transparent';
-		cancelButton.style.color = '#ccc';
-		cancelButton.style.border = '2px solid #ccc';
-		this.paymentButtonContainer.appendChild(cancelButton);
-
-		// Add event listener to cancel button
-		cancelButton.addEventListener('click', () => {
-			this.hidePaymentModal();
-			this.hideGameOverScreen();
-			this.game.restartGame();
-		});
 	}
 
 	hidePaymentModal() {
-		this.paymentModal.style.display = 'none';
+		if (this.paymentModal && this.paymentButtonContainer) {
+			this.paymentModal.style.display = 'none';
+			console.log('DEBUG - Payment modal hidden');
 
-		// Clear payment button container
-		while (this.paymentButtonContainer.firstChild) {
-			this.paymentButtonContainer.removeChild(
-				this.paymentButtonContainer.firstChild
-			);
+			// Clear payment button container
+			while (this.paymentButtonContainer.firstChild) {
+				this.paymentButtonContainer.removeChild(
+					this.paymentButtonContainer.firstChild
+				);
+			}
 		}
 	}
 }
