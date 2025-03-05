@@ -258,8 +258,8 @@ export class Cube {
 		const particleGeometry = new THREE.BoxGeometry(0.1, 0.1, 0.1);
 		const particleMaterial = new THREE.MeshBasicMaterial({
 			color: this.getParticleColor(),
-			emissive: this.getParticleColor(),
-			emissiveIntensity: 1.0,
+			transparent: true,
+			opacity: 0.8,
 		});
 
 		for (let i = 0; i < particleCount; i++) {

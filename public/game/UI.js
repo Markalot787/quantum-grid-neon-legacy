@@ -162,4 +162,17 @@ export class UI {
 			this.paymentModal.style.display = 'none';
 		}
 	}
+
+	update() {
+		// This method is called every frame by Game.js
+		// Add any UI updates that need to happen every frame here
+		// Currently, we don't need frame-by-frame updates for the UI
+		// but the method must exist to prevent errors
+	}
+
+	updateMarkedTileStatus(status) {
+		// This method would update some UI element to show the marked tile status
+		// Currently, there's no specific element for this in the HTML, so we'll just log it
+		console.log('DEBUG - Marked tile status:', status);
+	}
 }
