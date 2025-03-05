@@ -6,7 +6,7 @@ import { PaymentModal } from './PaymentModal.js';
 
 export class Game {
 	constructor(container) {
-		this.container = container;
+		this.container = container || document.body;
 		this.scene = new THREE.Scene();
 		this.camera = new THREE.PerspectiveCamera(
 			75,
@@ -49,8 +49,11 @@ export class Game {
 	}
 
 	init() {
+		console.log('DEBUG - Game initialization started');
+
 		// Create scene
 		this.scene = new THREE.Scene();
+		this.scene.background = new THREE.Color(0x000033); // Dark blue background
 		console.log('DEBUG - Scene created');
 
 		// Create camera with better angle for platform visibility
@@ -62,7 +65,7 @@ export class Game {
 		);
 
 		// Position camera for better view of the game
-		this.camera.position.set(0, 10, -10);
+		this.camera.position.set(0, 15, -15);
 		this.camera.lookAt(0, 0, 5);
 
 		console.log('DEBUG - Camera setup:', {
@@ -107,9 +110,16 @@ export class Game {
 	setupRenderer() {
 		this.renderer = new THREE.WebGLRenderer({ antialias: true });
 		this.renderer.setSize(window.innerWidth, window.innerHeight);
-		this.renderer.setClearColor(0x000000);
+		this.renderer.setClearColor(0x000033); // Dark blue background
 		this.renderer.shadowMap.enabled = true;
-		document.body.appendChild(this.renderer.domElement);
+
+		// Append to container instead of body
+		this.container.appendChild(this.renderer.domElement);
+
+		console.log(
+			'DEBUG - Renderer setup complete, appended to:',
+			this.container
+		);
 	}
 
 	setupSkybox() {
@@ -214,18 +224,20 @@ export class Game {
 	}
 
 	setupLights() {
-		// Add much brighter ambient light
-		const ambientLight = new THREE.AmbientLight(0xffffff, 1.0); // Pure white, full intensity
+		console.log('DEBUG - Setting up lights');
+
+		// Add ambient light
+		const ambientLight = new THREE.AmbientLight(0xffffff, 0.6);
 		this.scene.add(ambientLight);
 
-		// Add stronger directional light from above
-		const directionalLight = new THREE.DirectionalLight(0xffffff, 1.5);
-		directionalLight.position.set(0, 10, 5);
+		// Add directional light
+		const directionalLight = new THREE.DirectionalLight(0xffffff, 1.0);
+		directionalLight.position.set(5, 10, 5);
 		directionalLight.castShadow = true;
 
 		// Improve shadow quality
-		directionalLight.shadow.mapSize.width = 2048;
-		directionalLight.shadow.mapSize.height = 2048;
+		directionalLight.shadow.mapSize.width = 1024;
+		directionalLight.shadow.mapSize.height = 1024;
 		directionalLight.shadow.camera.near = 0.5;
 		directionalLight.shadow.camera.far = 50;
 		directionalLight.shadow.camera.left = -10;
@@ -235,7 +247,7 @@ export class Game {
 
 		this.scene.add(directionalLight);
 
-		// Add brighter point lights for enhanced visibility
+		// Add colored point lights
 		const colors = [0x00ffff, 0xff00ff, 0xffff00];
 		const positions = [
 			[-5, 5, 0],
@@ -244,24 +256,26 @@ export class Game {
 		];
 
 		colors.forEach((color, i) => {
-			const light = new THREE.PointLight(color, 1.0, 30);
+			const light = new THREE.PointLight(color, 0.8, 20);
 			light.position.set(...positions[i]);
 			this.scene.add(light);
 		});
 
-		// Add spotlight that follows platform
+		// Add spotlight that follows player
 		const spotlight = new THREE.SpotLight(
 			0xffffff,
-			1.5,
-			30,
+			1.0,
+			20,
 			Math.PI / 4,
 			0.5,
 			2
 		);
-		spotlight.position.set(0, 15, 0);
-		spotlight.target.position.set(0, 0, 0);
+		spotlight.position.set(0, 10, 0);
+		spotlight.target.position.set(0, 0, 5);
 		this.scene.add(spotlight);
 		this.scene.add(spotlight.target);
+
+		console.log('DEBUG - Lights setup complete');
 	}
 
 	onWindowResize() {
@@ -639,7 +653,7 @@ export class Game {
 			this.cameraAnimation.time = 0;
 
 			// Reset camera position
-			this.camera.position.set(0, 10, -10);
+			this.camera.position.set(0, 15, -15);
 			this.camera.lookAt(0, 0, 5);
 
 			console.log('DEBUG - Camera position reset');
@@ -656,7 +670,6 @@ export class Game {
 	}
 
 	animate() {
-		console.log('DEBUG - Animate frame');
 		requestAnimationFrame(this.animate.bind(this));
 
 		// Get delta time
@@ -667,20 +680,16 @@ export class Game {
 			this.update(delta);
 		}
 
-		console.log('DEBUG - Rendering scene:', {
-			cameraPosition: this.camera.position,
-			platformVisible: this.level?.platformMesh?.visible,
-			playerVisible: this.player?.mesh?.visible,
-			sceneChildrenCount: this.scene.children.length,
-		});
+		// Log debug info occasionally (not every frame to avoid console spam)
+		if (Math.random() < 0.01) {
+			console.log('DEBUG - Rendering scene:', {
+				cameraPosition: this.camera.position,
+				playerVisible: this.player?.mesh?.visible,
+				sceneChildrenCount: this.scene.children.length,
+			});
+		}
 
 		// Render scene
-		if (this.composer && this.composer.renderer) {
-			this.composer.render();
-		} else if (this.renderer) {
-			this.renderer.render(this.scene, this.camera);
-		} else {
-			console.error('DEBUG - No renderer available!');
-		}
+		this.renderer.render(this.scene, this.camera);
 	}
 }

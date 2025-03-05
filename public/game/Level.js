@@ -80,11 +80,11 @@ export class Level {
 		const ctx = canvas.getContext('2d');
 
 		// Fill background with light color
-		ctx.fillStyle = '#333333';
+		ctx.fillStyle = '#444444';
 		ctx.fillRect(0, 0, canvas.width, canvas.height);
 
 		// Draw grid lines
-		ctx.strokeStyle = '#666666';
+		ctx.strokeStyle = '#888888';
 		ctx.lineWidth = 2;
 
 		// Calculate grid cell size
@@ -123,11 +123,13 @@ export class Level {
 		const gridHelper = new THREE.GridHelper(
 			Math.max(width, length),
 			Math.max(width, length),
-			0x666666,
-			0x444444
+			0x888888,
+			0x666666
 		);
 		gridHelper.position.set(0, 0.01, length / 2 - 0.5);
 		this.game.scene.add(gridHelper);
+
+		console.log('DEBUG - Grid helper added at position:', gridHelper.position);
 	}
 
 	createPlatformTiles(width, length) {
