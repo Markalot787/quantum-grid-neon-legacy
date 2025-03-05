@@ -30,11 +30,11 @@ export class Level {
 		// Create platform geometry
 		const geometry = new THREE.BoxGeometry(width, 1, length);
 
-		// Create material with grid texture - using much lighter color for visibility
+		// Use a lighter material for better visibility
 		const material = new THREE.MeshStandardMaterial({
 			color: 0x444444, // Light gray for visibility
-			emissive: 0x222222, // Subtle glow
-			emissiveIntensity: 0.5, // Increase for visibility
+			emissive: 0x111111, // Subtle glow
+			emissiveIntensity: 0.8, // Increase for visibility
 			metalness: 0.7,
 			roughness: 0.3,
 			map: gridTexture,
@@ -42,7 +42,7 @@ export class Level {
 
 		// Create platform mesh
 		this.platformMesh = new THREE.Mesh(geometry, material);
-		this.platformMesh.position.set(0, -0.5, length / 2);
+		this.platformMesh.position.set(0, -0.5, length / 2); // Ensure proper positioning
 		this.platformMesh.receiveShadow = true;
 		this.game.scene.add(this.platformMesh);
 
@@ -70,13 +70,13 @@ export class Level {
 		canvas.height = 512;
 		const context = canvas.getContext('2d');
 
-		// Fill background - much lighter for visibility
+		// Fill background with lighter color
 		context.fillStyle = '#444444';
 		context.fillRect(0, 0, 512, 512);
 
-		// Draw grid lines
+		// Draw grid lines - brighter and more visible
 		context.strokeStyle = '#00aaff';
-		context.lineWidth = 2; // Thicker lines for visibility
+		context.lineWidth = 2; // Thicker lines
 
 		// Draw vertical lines
 		const cellSize = 32;
@@ -107,9 +107,9 @@ export class Level {
 	}
 
 	addGridLines(width, length) {
-		// Create grid lines material
+		// Create grid lines material - brighter and more visible
 		const material = new THREE.LineBasicMaterial({
-			color: 0x00aaff,
+			color: 0x00aaff, // Bright blue for contrast
 			transparent: true,
 			opacity: 0.6, // Higher opacity for visibility
 		});

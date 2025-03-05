@@ -6,8 +6,9 @@ export class Cube {
 		this.type = type; // 'normal', 'forbidden', or 'advantage'
 		this.size = 1;
 		this.mesh = null;
+		this.position = { x, z }; // Track position separately for consistent movement
 		this.rotation = {
-			speed: (Math.random() - 0.5) * 0.02, // Random rotation direction
+			speed: (Math.random() - 0.5) * 0.01, // Reduced random rotation for more consistent movement
 			axis: new THREE.Vector3(
 				Math.random() > 0.5 ? 1 : 0,
 				0,
@@ -28,7 +29,7 @@ export class Cube {
 			case 'normal':
 				material = new THREE.MeshStandardMaterial({
 					color: 0xaaaaaa, // Gray for normal cubes like original game
-					emissive: 0x555555,
+					emissive: 0x444444,
 					emissiveIntensity: 0.3,
 					metalness: 0.7,
 					roughness: 0.3,
@@ -120,6 +121,7 @@ export class Cube {
 		// Create the main mesh
 		this.mesh = new THREE.Mesh(geometry, material);
 		this.mesh.position.set(x, this.size / 2, z);
+		this.position = { x, z }; // Store initial position
 		this.mesh.castShadow = true;
 		this.mesh.receiveShadow = true;
 
@@ -154,15 +156,16 @@ export class Cube {
 	}
 
 	update(delta) {
-		// Move cube towards player
+		// Move cube towards player at consistent speed
 		const speed = this.game.settings.cubeSpeed * delta;
-		this.mesh.position.z -= speed;
+		this.position.z -= speed;
+		this.mesh.position.z = this.position.z;
 
-		// Roll the cube as it moves - using more pronounced rolling
+		// Roll the cube as it moves - pronounced rolling animation
 		this.rollCube(speed);
 
-		// Apply additional rotation for visual flair - reduced for more consistent movement
-		this.mesh.rotateOnAxis(this.rotation.axis, this.rotation.speed * 0.5);
+		// Apply subtle additional rotation for visual flair - reduced for consistency
+		this.mesh.rotateOnAxis(this.rotation.axis, this.rotation.speed * 0.3);
 
 		// Check for collision with player
 		this.checkPlayerCollision();

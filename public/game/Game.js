@@ -204,7 +204,7 @@ export class Game {
 
 	setupLights() {
 		// Ambient light for base illumination - increased intensity for better visibility
-		const ambientLight = new THREE.AmbientLight(0x222244, 0.6);
+		const ambientLight = new THREE.AmbientLight(0x404040, 0.8);
 		this.scene.add(ambientLight);
 
 		// Main directional light - increased intensity
@@ -236,13 +236,9 @@ export class Game {
 			const pointLight = new THREE.PointLight(colors[i], 0.8, 20);
 			pointLight.position.set(...positions[i]);
 			this.scene.add(pointLight);
-
-			// Add light helper for debugging (uncomment if needed)
-			// const helper = new THREE.PointLightHelper(pointLight, 0.5);
-			// this.scene.add(helper);
 		}
 
-		// Add a spotlight that follows above the player for better visibility
+		// Add a spotlight that follows the player for better visibility
 		const playerSpotlight = new THREE.SpotLight(
 			0xffffff,
 			1.0,

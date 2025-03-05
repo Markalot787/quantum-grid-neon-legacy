@@ -29,27 +29,29 @@ export class Player {
 		// Create player geometry
 		const geometry = new THREE.BoxGeometry(0.8, 0.8, 0.8);
 
-		// Create player material with neon effect
+		// Create player material with enhanced neon effect
 		const material = new THREE.MeshStandardMaterial({
 			color: 0x00ffff,
 			emissive: 0x00ffff,
-			emissiveIntensity: 0.5,
+			emissiveIntensity: 0.8, // Increased from 0.5
 			metalness: 0.8,
 			roughness: 0.2,
 		});
 
 		// Create player mesh
 		this.mesh = new THREE.Mesh(geometry, material);
-		this.mesh.position.copy(this.position);
+		this.mesh.position.y = this.size * 0.7; // Ensure player is above the platform
+		this.mesh.position.x = this.position.x;
+		this.mesh.position.z = this.position.z;
 		this.mesh.castShadow = true;
 		this.mesh.receiveShadow = true;
 
-		// Add wireframe overlay for neon grid effect
+		// Add wireframe overlay for neon grid effect with thicker lines
 		const wireframe = new THREE.LineSegments(
 			new THREE.EdgesGeometry(geometry),
 			new THREE.LineBasicMaterial({
 				color: 0xffffff,
-				linewidth: 2,
+				linewidth: 3, // Increased from 2
 			})
 		);
 		this.mesh.add(wireframe);
@@ -62,17 +64,17 @@ export class Player {
 	}
 
 	addGlowEffect() {
-		// Create a point light that follows the player
-		this.glowLight = new THREE.PointLight(0x00ffff, 0.8, 3);
+		// Create a point light that follows the player with increased intensity
+		this.glowLight = new THREE.PointLight(0x00ffff, 1.2, 5); // Increased intensity from 0.8 to 1.2, range from 3 to 5
 		this.glowLight.position.set(0, 0, 0);
 		this.mesh.add(this.glowLight);
 
-		// Create a pulse animation for the glow
+		// Create a pulse animation for the glow with enhanced values
 		this.glowPulse = {
-			intensity: 0.8,
-			min: 0.5,
-			max: 1.0,
-			speed: 2.0,
+			intensity: 1.2,
+			min: 0.8, // Increased minimum brightness
+			max: 1.5, // Increased maximum brightness
+			speed: 2.5, // Slightly faster pulse
 			direction: 1,
 		};
 	}
@@ -188,20 +190,22 @@ export class Player {
 	}
 
 	updateGlowEffect(delta) {
-		// Pulse the glow light intensity
-		this.glowPulse.intensity +=
-			this.glowPulse.direction * this.glowPulse.speed * delta;
+		if (this.glowLight) {
+			// Update pulse direction
+			this.glowPulse.intensity +=
+				this.glowPulse.direction * this.glowPulse.speed * delta;
 
-		// Reverse direction at min/max
-		if (this.glowPulse.intensity >= this.glowPulse.max) {
-			this.glowPulse.intensity = this.glowPulse.max;
-			this.glowPulse.direction = -1;
-		} else if (this.glowPulse.intensity <= this.glowPulse.min) {
-			this.glowPulse.intensity = this.glowPulse.min;
-			this.glowPulse.direction = 1;
+			// Check boundaries and change direction
+			if (this.glowPulse.intensity >= this.glowPulse.max) {
+				this.glowPulse.intensity = this.glowPulse.max;
+				this.glowPulse.direction = -1;
+			} else if (this.glowPulse.intensity <= this.glowPulse.min) {
+				this.glowPulse.intensity = this.glowPulse.min;
+				this.glowPulse.direction = 1;
+			}
+
+			// Apply new intensity
+			this.glowLight.intensity = this.glowPulse.intensity;
 		}
-
-		// Apply the new intensity
-		this.glowLight.intensity = this.glowPulse.intensity;
 	}
 }
