@@ -103,6 +103,12 @@ export class Game {
 		// Show start screen
 		this.ui.showStartScreen();
 
+		// Hide loading screen
+		const loadingScreen = document.getElementById('loading-screen');
+		if (loadingScreen) {
+			loadingScreen.style.display = 'none';
+		}
+
 		// Start animation loop
 		this.animate();
 	}

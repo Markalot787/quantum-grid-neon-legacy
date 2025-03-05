@@ -254,9 +254,23 @@
 			#cancel-payment:hover {
 				color: #fff;
 			}
+			#loading-screen {
+				position: fixed;
+				top: 0;
+				left: 0;
+				width: 100%;
+				height: 100%;
+				background-color: #000;
+				color: #0cf;
+				display: flex;
+				justify-content: center;
+				align-items: center;
+				z-index: 2000;
+			}
 		</style>
 	</head>
 	<body>
+		<div id="loading-screen">Loading...</div>
 		<div id="game-container"></div>
 
 		<div id="info">Quantum Grid: Neon Legacy</div>
