@@ -766,90 +766,28 @@ export class Game {
 		try {
 			console.log('Setting up post-processing effects...');
 
-			// Create a simple post-processing effect using CSS filters for the whole page
+			// Just use simple CSS filters instead of trying to load problematic scripts
+			// This is more reliable and will work across all browsers
 			this.renderer.domElement.style.filter =
 				'brightness(1.1) contrast(1.05) saturate(1.2)';
 
-			// Load required post-processing scripts
-			const loadScript = (url) => {
-				return new Promise((resolve, reject) => {
-					const script = document.createElement('script');
-					script.src = url;
-					script.onload = resolve;
-					script.onerror = reject;
-					document.head.appendChild(script);
-				});
-			};
+			// Add a subtle glow/bloom effect with CSS
+			const gameContainer = document.body;
+			const style = document.createElement('style');
+			style.textContent = `
+				canvas {
+					box-shadow: 0 0 15px rgba(0, 170, 255, 0.4);
+				}
+				
+				/* Enhance neon elements */
+				#score, #level, #lives, #cubes-left {
+					text-shadow: 0 0 8px currentColor;
+					filter: brightness(1.1);
+				}
+			`;
+			document.head.appendChild(style);
 
-			// Load the required modules in sequence
-			Promise.all([
-				loadScript(
-					'https://cdn.jsdelivr.net/npm/three@0.157.0/examples/jsm/postprocessing/EffectComposer.js'
-				),
-				loadScript(
-					'https://cdn.jsdelivr.net/npm/three@0.157.0/examples/jsm/postprocessing/RenderPass.js'
-				),
-				loadScript(
-					'https://cdn.jsdelivr.net/npm/three@0.157.0/examples/jsm/postprocessing/UnrealBloomPass.js'
-				),
-			])
-				.then(() => {
-					// Now that the scripts are loaded, we can use the classes
-					const EffectComposer = THREE.EffectComposer;
-					const RenderPass = THREE.RenderPass;
-					const UnrealBloomPass = THREE.UnrealBloomPass;
-
-					if (EffectComposer && RenderPass && UnrealBloomPass) {
-						// Create effect composer
-						this.composer = new EffectComposer(this.renderer);
-
-						// Add render pass
-						const renderPass = new RenderPass(this.scene, this.camera);
-						this.composer.addPass(renderPass);
-
-						// Add bloom pass for neon glow effect
-						const bloomPass = new UnrealBloomPass(
-							new THREE.Vector2(window.innerWidth, window.innerHeight),
-							1.5, // Strength
-							0.4, // Radius
-							0.85 // Threshold
-						);
-						bloomPass.threshold = 0.3;
-						bloomPass.strength = 1.2;
-						bloomPass.radius = 0.7;
-						this.composer.addPass(bloomPass);
-
-						console.log('Advanced post-processing setup complete');
-
-						// Update the animate method to use the composer
-						const originalAnimate = this.animate.bind(this);
-						this.animate = () => {
-							requestAnimationFrame(this.animate.bind(this));
-
-							const delta = this.clock.getDelta();
-
-							if (!this.paused) {
-								this.update(delta);
-							}
-
-							// Use composer instead of renderer
-							if (this.composer) {
-								this.composer.render();
-							} else {
-								this.renderer.render(this.scene, this.camera);
-							}
-						};
-
-						// Start animation loop again
-						this.animate();
-					}
-				})
-				.catch((error) => {
-					console.warn(
-						'Failed to load post-processing modules, using basic rendering:',
-						error
-					);
-				});
+			console.log('Basic post-processing setup complete with CSS filters');
 		} catch (error) {
 			console.warn(
 				'Post-processing setup failed, continuing without effects:',
