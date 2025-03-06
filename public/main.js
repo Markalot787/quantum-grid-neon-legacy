@@ -1,47 +1,35 @@
-// First, import the threeImports to ensure Three.js and all extensions are loaded
-import * as ThreeImports from './threeImports.js';
-
-// Then import our game
 import { Game } from './game/Game.js';
 
-// Initialize game when DOM is fully loaded and Three.js is ready
-window.addEventListener('DOMContentLoaded', async () => {
-	try {
-		console.log('DOM Loaded, initializing game...');
-
-		// Update loading progress
-		const loadingBar = document.getElementById('loading-bar');
-		const loadingText = document.getElementById('loading-text');
-
-		// Show loading progress
-		loadingBar.style.width = '50%';
-		loadingText.textContent = 'Loading game...';
-
-		// Initialize game
-		const game = new Game();
-		await game.init();
-
-		// Update loading progress
-		loadingBar.style.width = '100%';
-		loadingText.textContent = 'Game ready!';
-
-		// Start animation loop
-		game.animate();
-
-		// Expose game instance for debugging
-		window.game = game;
-
-		// Hide loading screen after a delay
-		setTimeout(() => {
-			document.getElementById('loading-screen').style.opacity = '0';
-			setTimeout(() => {
-				document.getElementById('loading-screen').style.display = 'none';
-			}, 1000);
-		}, 500);
-	} catch (error) {
-		console.error('Error initializing game:', error);
-		document.getElementById('loading-text').textContent =
-			'Error loading game: ' + error.message;
-		document.getElementById('loading-text').style.color = '#ff0000';
-	}
+// Error handling for loading issues
+window.addEventListener('error', function (event) {
+	console.error('Loading error:', event.message);
+	document.body.innerHTML += `
+        <div style="position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: rgba(0,0,0,0.8); color: white; z-index: 9999; padding: 20px; font-family: monospace;">
+            <h2>Error Loading Game</h2>
+            <p>${event.message}</p>
+            <p>File: ${event.filename}</p>
+            <p>Line: ${event.lineno}, Column: ${event.colno}</p>
+            <button onclick="location.reload()">Reload Page</button>
+        </div>
+    `;
 });
+
+// Initialize game
+try {
+	const game = new Game();
+	game.init();
+	game.animate();
+
+	// Export game instance for debugging
+	window.game = game;
+} catch (err) {
+	console.error('Game initialization error:', err);
+	document.body.innerHTML += `
+        <div style="position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: rgba(0,0,0,0.8); color: white; z-index: 9999; padding: 20px; font-family: monospace;">
+            <h2>Game Initialization Error</h2>
+            <p>${err.message}</p>
+            <pre>${err.stack}</pre>
+            <button onclick="location.reload()">Reload Page</button>
+        </div>
+    `;
+}

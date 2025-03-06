@@ -2,8 +2,33 @@ export class PaymentModal {
 	constructor(game) {
 		this.game = game;
 		this.modal = document.getElementById('payment-modal');
+
+		if (!this.modal) {
+			console.warn('Payment modal element not found, creating a dummy');
+			this.modal = document.createElement('div');
+			this.modal.id = 'payment-modal';
+			this.modal.style.display = 'none';
+			document.body.appendChild(this.modal);
+		}
+
 		this.closeButton = document.querySelector('.close');
 		this.payButton = document.getElementById('pay-button');
+
+		// Handle missing elements
+		if (!this.closeButton) {
+			console.warn('Close button not found, creating a dummy');
+			this.closeButton = document.createElement('span');
+			this.closeButton.className = 'close';
+			this.modal.appendChild(this.closeButton);
+		}
+
+		if (!this.payButton) {
+			console.warn('Pay button not found, creating a dummy');
+			this.payButton = document.createElement('button');
+			this.payButton.id = 'pay-button';
+			this.payButton.textContent = 'Pay $2.99';
+			this.modal.appendChild(this.payButton);
+		}
 
 		// Add event listeners
 		this.closeButton.addEventListener('click', () => this.hide());
@@ -11,6 +36,8 @@ export class PaymentModal {
 
 		// Load Stripe.js
 		this.loadStripeScript();
+
+		console.log('PaymentModal initialized successfully');
 	}
 
 	show() {
@@ -28,6 +55,8 @@ export class PaymentModal {
 			script.src = 'https://js.stripe.com/v3/';
 			script.async = true;
 			document.body.appendChild(script);
+
+			console.log('Stripe.js script loaded');
 		}
 	}
 
@@ -62,6 +91,7 @@ export class PaymentModal {
 				}
 			} else {
 				// If Stripe isn't loaded, use fallback
+				console.warn('Stripe not loaded, using fallback payment');
 				this.fallbackPayment();
 			}
 		} catch (error) {

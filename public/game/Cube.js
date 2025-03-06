@@ -1,4 +1,4 @@
-import { THREE } from '../threeImports.js';
+import * as THREE from 'https://cdn.jsdelivr.net/npm/three@0.157.0/build/three.module.js';
 
 export class Cube {
 	constructor(game, type, x, z) {
@@ -6,54 +6,41 @@ export class Cube {
 		this.type = type; // 'normal', 'forbidden', or 'advantage'
 		this.size = 1;
 		this.mesh = null;
-		this.glowMesh = null;
-		this.animations = [];
+		this.destroyed = false;
 
 		// Create cube mesh
 		this.createMesh(x, z);
 	}
 
 	createMesh(x, z) {
-		// Create geometry with slight bevel
 		const geometry = new THREE.BoxGeometry(this.size, this.size, this.size);
-
-		// Create materials based on cube type
 		let material;
-		let glowColor;
 
+		// Set material based on cube type
 		switch (this.type) {
 			case 'normal':
 				material = new THREE.MeshStandardMaterial({
-					color: 0x888888,
+					color: 0xaaaaaa,
+					roughness: 0.3,
 					metalness: 0.7,
-					roughness: 0.2,
-					envMap: this.game.envMap || null,
-					emissive: 0x222222,
-					emissiveIntensity: 0.2,
 				});
-				glowColor = null; // No glow for normal cubes
 				break;
 			case 'forbidden':
 				material = new THREE.MeshStandardMaterial({
 					color: 0x000000,
-					metalness: 0.9,
-					roughness: 0.1,
-					envMap: this.game.envMap || null,
-					emissive: 0xff0000,
-					emissiveIntensity: 0.2,
+					roughness: 0.2,
+					metalness: 0.8,
+					emissive: 0x330000,
 				});
-				glowColor = 0xff0000; // Red glow
 				break;
 			case 'advantage':
 				material = new THREE.MeshStandardMaterial({
-					color: 0x00ff88,
-					metalness: 0.8,
+					color: 0x00ff00,
 					roughness: 0.2,
-					envMap: this.game.envMap || null,
-					emissive: 0x00ff88,
+					metalness: 0.8,
+					emissive: 0x003300,
 					emissiveIntensity: 0.5,
 				});
-				glowColor = 0x00ff88; // Green glow
 				break;
 		}
 
@@ -61,120 +48,9 @@ export class Cube {
 		this.mesh = new THREE.Mesh(geometry, material);
 		this.mesh.position.set(x, this.size / 2, z);
 		this.mesh.castShadow = true;
-		this.mesh.receiveShadow = true;
-
-		// Add glow effect for special cubes
-		if (glowColor) {
-			this.addGlowEffect(glowColor);
-		}
 
 		// Add to scene
 		this.game.scene.add(this.mesh);
-
-		// Add random rotation for visual interest
-		if (this.type === 'advantage') {
-			this.addRotationAnimation();
-		}
-
-		// Add floating animation for advantage cubes
-		if (this.type === 'advantage') {
-			this.addFloatingAnimation();
-		}
-	}
-
-	addGlowEffect(color) {
-		// Create slightly larger mesh with glow material
-		const glowGeometry = new THREE.BoxGeometry(
-			this.size * 1.1,
-			this.size * 1.1,
-			this.size * 1.1
-		);
-		const glowMaterial = new THREE.MeshBasicMaterial({
-			color: color,
-			transparent: true,
-			opacity: 0.4,
-			side: THREE.BackSide,
-		});
-
-		this.glowMesh = new THREE.Mesh(glowGeometry, glowMaterial);
-		this.mesh.add(this.glowMesh);
-
-		// Add pulse animation to glow
-		if (this.type === 'advantage') {
-			this.addPulseAnimation();
-		}
-	}
-
-	addRotationAnimation() {
-		// Only for advantage cubes - slow rotation
-		const rotationSpeed = {
-			x: Math.random() * 0.5 - 0.25,
-			y: Math.random() * 0.5,
-			z: Math.random() * 0.5 - 0.25,
-		};
-
-		this.animations.push({
-			type: 'rotation',
-			update: (delta) => {
-				this.mesh.rotation.x += rotationSpeed.x * delta;
-				this.mesh.rotation.y += rotationSpeed.y * delta;
-				this.mesh.rotation.z += rotationSpeed.z * delta;
-			},
-		});
-	}
-
-	addFloatingAnimation() {
-		// Floating animation for advantage cubes
-		const startY = this.mesh.position.y;
-		const floatHeight = 0.2;
-		const floatCycle = Math.random() * Math.PI * 2; // Random start phase
-		const floatSpeed = 1.0 + Math.random() * 0.5; // Slightly random speed
-
-		this.animations.push({
-			type: 'float',
-			data: {
-				startY,
-				floatCycle,
-				elapsedTime: 0,
-			},
-			update: (delta) => {
-				const data = this.animations[this.animations.length - 1].data;
-				data.elapsedTime += delta;
-
-				// Sine wave floating motion
-				const newY =
-					startY +
-					Math.sin(data.elapsedTime * floatSpeed + floatCycle) * floatHeight;
-				this.mesh.position.y = newY;
-			},
-		});
-	}
-
-	addPulseAnimation() {
-		// Pulsing animation for the glow effect
-		const pulseCycle = Math.random() * Math.PI * 2; // Random start phase
-		const pulseSpeed = 2.0 + Math.random() * 1.0; // Slightly random speed
-
-		this.animations.push({
-			type: 'pulse',
-			data: {
-				pulseCycle,
-				elapsedTime: 0,
-				baseOpacity: 0.4,
-			},
-			update: (delta) => {
-				if (!this.glowMesh) return;
-
-				const data = this.animations[this.animations.length - 1].data;
-				data.elapsedTime += delta;
-
-				// Sine wave opacity pulsing
-				const newOpacity =
-					data.baseOpacity +
-					Math.sin(data.elapsedTime * pulseSpeed + pulseCycle) * 0.2;
-				this.glowMesh.material.opacity = newOpacity;
-			},
-		});
 	}
 
 	update(delta) {
@@ -184,16 +60,11 @@ export class Cube {
 
 		// Check for collision with player
 		this.checkPlayerCollision();
-
-		// Update animations
-		for (const animation of this.animations) {
-			if (animation.update) {
-				animation.update(delta);
-			}
-		}
 	}
 
 	checkPlayerCollision() {
+		if (this.destroyed) return;
+
 		const playerPos = this.game.player.getPosition();
 		const cubePos = this.mesh.position;
 

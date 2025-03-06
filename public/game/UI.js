@@ -1,14 +1,29 @@
 export class UI {
 	constructor(game) {
 		this.game = game;
-		this.scoreElement = document.getElementById('score');
-		this.levelElement = document.getElementById('level');
-		this.cubesLeftElement = document.getElementById('cubes-left');
-		this.markedTileElement = document.getElementById('markedTile');
-		this.gameOverScreen = document.getElementById('gameOverScreen');
-		this.finalScoreElement = document.getElementById('finalScore');
-		this.restartButton = document.getElementById('restartButton');
-		this.livesElement = document.getElementById('lives');
+
+		// Get DOM elements with error checking
+		this.scoreElement =
+			document.getElementById('score') || this.createDummyElement('score');
+		this.levelElement =
+			document.getElementById('level') || this.createDummyElement('level');
+		this.cubesLeftElement =
+			document.getElementById('cubes-left') ||
+			this.createDummyElement('cubes-left');
+		this.markedTileElement =
+			document.getElementById('markedTile') ||
+			this.createDummyElement('markedTile');
+		this.gameOverScreen =
+			document.getElementById('gameOverScreen') ||
+			this.createDummyElement('gameOverScreen');
+		this.finalScoreElement =
+			document.getElementById('finalScore') ||
+			this.createDummyElement('finalScore');
+		this.restartButton =
+			document.getElementById('restartButton') ||
+			this.createDummyElement('restartButton');
+		this.livesElement =
+			document.getElementById('lives') || this.createDummyElement('lives');
 
 		// Create hearts container for lives
 		this.heartsContainer = document.createElement('div');
@@ -19,32 +34,59 @@ export class UI {
 			right: 10px;
 			display: flex;
 			gap: 5px;
+			z-index: 110;
 		`;
 		document.body.appendChild(this.heartsContainer);
 
 		// Add event listeners
-		this.restartButton.addEventListener('click', () => {
-			this.game.restart();
-		});
+		if (this.restartButton) {
+			this.restartButton.addEventListener('click', () => {
+				this.game.restart();
+			});
+		}
+
+		console.log('UI initialized successfully');
+	}
+
+	// Create a dummy element when a DOM element is missing
+	createDummyElement(id) {
+		console.warn(`Element with id '${id}' not found, creating dummy element`);
+		const el = document.createElement('div');
+		el.id = id;
+		el.style.display = 'none';
+		document.body.appendChild(el);
+		return el;
 	}
 
 	updateScore(score) {
-		this.scoreElement.textContent = `Score: ${score}`;
+		if (this.scoreElement) {
+			this.scoreElement.textContent = `Score: ${score}`;
+		}
 	}
 
 	updateLevel(level) {
-		this.levelElement.textContent = `Level: ${level}`;
+		if (this.levelElement) {
+			this.levelElement.textContent = `Level: ${level}`;
+		}
 	}
 
 	updateCubesLeft(count) {
-		this.cubesLeftElement.textContent = `Cubes: ${count}`;
+		if (this.cubesLeftElement) {
+			this.cubesLeftElement.textContent = `Cubes: ${count}`;
+		}
 	}
 
 	updateMarkedTileStatus(status) {
-		this.markedTileElement.textContent = status;
+		if (this.markedTileElement) {
+			this.markedTileElement.textContent = status;
+		}
 	}
 
 	updateLives(lives) {
+		if (this.livesElement) {
+			this.livesElement.textContent = `Lives: ${lives}`;
+		}
+
 		// Clear existing hearts
 		this.heartsContainer.innerHTML = '';
 
@@ -62,11 +104,15 @@ export class UI {
 	}
 
 	showGameOver(score) {
-		this.finalScoreElement.textContent = `Your score: ${score}`;
-		this.gameOverScreen.style.display = 'block';
+		if (this.finalScoreElement && this.gameOverScreen) {
+			this.finalScoreElement.textContent = `Your score: ${score}`;
+			this.gameOverScreen.style.display = 'block';
+		}
 	}
 
 	hideGameOver() {
-		this.gameOverScreen.style.display = 'none';
+		if (this.gameOverScreen) {
+			this.gameOverScreen.style.display = 'none';
+		}
 	}
 }

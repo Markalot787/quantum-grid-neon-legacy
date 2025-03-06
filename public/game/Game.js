@@ -1,29 +1,8 @@
-// Import all Three.js modules through the central import file
-import {
-	THREE,
-	EffectComposer,
-	RenderPass,
-	UnrealBloomPass,
-	ShaderPass,
-	CopyShader,
-} from '../threeImports.js';
-
+import * as THREE from 'https://cdn.jsdelivr.net/npm/three@0.157.0/build/three.module.js';
 import { Player } from './Player.js';
 import { Level } from './Level.js';
 import { UI } from './UI.js';
 import { PaymentModal } from './PaymentModal.js';
-
-// Import effects
-import {
-	createCaptureParticles,
-	updateParticles,
-	triggerParticles,
-	createAdvantageAreaParticles,
-	updateAdvantageAreaParticles,
-	triggerAdvantageAreaParticles,
-} from '../assets/effects/particles.js';
-import { createDigitalSkybox } from '../assets/skybox/skybox.js';
-import { createGridTexture } from '../assets/textures/grid.js';
 
 export class Game {
 	constructor() {
@@ -40,15 +19,13 @@ export class Game {
 		this.gameOver = false;
 		this.paymentModal = null;
 		this.playCount = 0;
+		this.lives = 3;
+		this.maxLives = 3;
+		this.cameraAngle = 0;
+		this.showTutorial = true;
 
-		// Post-processing
-		this.composer = null;
-		this.bloomPass = null;
-
-		// Effects
-		this.captureParticles = null;
-		this.advantageAreaParticles = null;
-		this.envMap = null;
+		// Animation queue
+		this.animations = [];
 
 		// Game state
 		this.paused = false;
@@ -63,13 +40,6 @@ export class Game {
 			initialCubeCount: 12,
 		};
 
-		// Loading
-		this.loadingManager = new THREE.LoadingManager();
-		this.setupLoadingManager();
-
-		// Animation queue
-		this.animations = [];
-
 		// Camera movement parameters
 		this.cameraMovement = {
 			angle: 0,
@@ -80,72 +50,116 @@ export class Game {
 		};
 	}
 
-	async init() {
-		// Create scene
-		this.scene = new THREE.Scene();
-		this.scene.background = new THREE.Color(0x000011);
+	init() {
+		try {
+			console.log('Initializing game...');
 
-		// Set up fog for atmosphere
-		this.scene.fog = new THREE.FogExp2(0x000011, 0.035);
+			// Create scene
+			this.scene = new THREE.Scene();
+			this.scene.background = new THREE.Color(0x000033); // Dark blue background
 
-		// Create camera with better angle
-		this.camera = new THREE.PerspectiveCamera(
-			75,
-			window.innerWidth / window.innerHeight,
-			0.1,
-			100
-		);
-		this.camera.position.set(0, 8, -6); // Higher and further back for better view
-		this.camera.lookAt(0, 0, 8);
+			// Create camera
+			this.camera = new THREE.PerspectiveCamera(
+				75,
+				window.innerWidth / window.innerHeight,
+				0.1,
+				1000
+			);
 
-		// Create renderer with better settings
-		this.renderer = new THREE.WebGLRenderer({
-			antialias: true,
-			powerPreference: 'high-performance',
-		});
-		this.renderer.setSize(window.innerWidth, window.innerHeight);
-		this.renderer.shadowMap.enabled = true;
-		this.renderer.shadowMap.type = THREE.PCFSoftShadowMap;
-		this.renderer.outputEncoding = THREE.sRGBEncoding;
-		this.renderer.toneMapping = THREE.ACESFilmicToneMapping;
-		this.renderer.toneMappingExposure = 1.0;
-		document.body.appendChild(this.renderer.domElement);
+			// Set initial camera position for angled view
+			this.camera.position.set(8, 12, -8);
+			this.camera.lookAt(0, 0, 8);
+			console.log('Camera initialized at position:', this.camera.position);
 
-		// Set up post-processing
-		await this.setupPostProcessing();
+			// Create renderer
+			this.renderer = new THREE.WebGLRenderer({ antialias: true });
+			this.renderer.setSize(window.innerWidth, window.innerHeight);
+			this.renderer.shadowMap.enabled = true;
+			document.body.appendChild(this.renderer.domElement);
+			console.log('Renderer created');
 
-		// Create skybox
-		await this.setupSkybox();
+			// Add lights
+			const ambientLight = new THREE.AmbientLight(0x404040, 1);
+			this.scene.add(ambientLight);
 
-		// Add lights
-		this.setupLights();
+			const directionalLight = new THREE.DirectionalLight(0xffffff, 1);
+			directionalLight.position.set(5, 10, 5);
+			directionalLight.castShadow = true;
+			this.scene.add(directionalLight);
+			console.log('Lights added to scene');
 
-		// Create environment map for reflections
-		await this.setupEnvironmentMap();
+			// Set up post-processing effects
+			this.setupPostProcessing();
 
-		// Create particle systems
-		this.setupParticleSystems();
+			// Initialize components
+			console.log('Initializing components...');
+			this.player = new Player(this);
+			console.log('Player initialized');
 
-		// Initialize components
-		this.player = new Player(this);
-		this.level = new Level(this);
-		this.ui = new UI(this);
+			this.level = new Level(this);
+			console.log('Level initialized');
 
-		// Create platform
-		this.level.createPlatform();
+			this.ui = new UI(this);
+			console.log('UI initialized');
 
-		// Start first level
-		this.startLevel(this.currentLevel);
+			// Create platform
+			this.level.createPlatform();
+			console.log('Platform created');
 
-		// Add event listeners
-		window.addEventListener('resize', () => this.onWindowResize());
-		document.addEventListener('keydown', (e) => this.handleKeyDown(e));
+			// Start first level
+			this.startLevel(this.currentLevel);
+			console.log('Level started');
 
-		// Initialize payment modal
-		this.paymentModal = new PaymentModal(this);
+			// Add event listeners
+			window.addEventListener('resize', () => this.onWindowResize());
+			document.addEventListener('keydown', (e) => this.handleKeyDown(e));
+			console.log('Event listeners added');
 
-		// Start game
-		this.gameStarted = true;
+			// Initialize payment modal
+			this.paymentModal = new PaymentModal(this);
+			console.log('Payment modal initialized');
+
+			// Start game
+			this.gameStarted = true;
+			console.log('Game initialized successfully');
+
+			// Initialize lives display
+			this.ui.updateLives(this.lives);
+
+			// Show tutorial popup
+			this.showTutorial();
+		} catch (error) {
+			console.error('Error during game initialization:', error);
+			// Show error message on screen
+			this.showErrorMessage(error);
+			throw error;
+		}
+	}
+
+	showErrorMessage(error) {
+		const errorDiv = document.createElement('div');
+		errorDiv.style.cssText = `
+			position: fixed;
+			top: 0;
+			left: 0;
+			right: 0;
+			bottom: 0;
+			background: rgba(0,0,0,0.8);
+			color: white;
+			padding: 20px;
+			font-family: monospace;
+			z-index: 9999;
+			overflow: auto;
+		`;
+
+		errorDiv.innerHTML = `
+			<h2>Game Error</h2>
+			<p>${error.message}</p>
+			<pre>${error.stack}</pre>
+			<button onclick="location.reload()">Reload Game</button>
+		`;
+
+		document.body.appendChild(errorDiv);
 	}
 
 	showTutorial() {
@@ -204,11 +218,6 @@ export class Game {
 		this.camera.aspect = window.innerWidth / window.innerHeight;
 		this.camera.updateProjectionMatrix();
 		this.renderer.setSize(window.innerWidth, window.innerHeight);
-
-		// Update composer size for post-processing
-		if (this.composer) {
-			this.composer.setSize(window.innerWidth, window.innerHeight);
-		}
 	}
 
 	handleKeyDown(event) {
@@ -260,12 +269,10 @@ export class Game {
 
 		// Create marked tile
 		const geometry = new THREE.BoxGeometry(1, 0.1, 1);
-		const material = new THREE.MeshStandardMaterial({
-			color: 0x00ffff,
+		const material = new THREE.MeshBasicMaterial({
+			color: 0x0099ff,
 			transparent: true,
 			opacity: 0.5,
-			emissive: 0x00ffff,
-			emissiveIntensity: 0.8,
 		});
 
 		const markedTileMesh = new THREE.Mesh(geometry, material);
@@ -278,23 +285,8 @@ export class Game {
 		};
 
 		this.ui.updateMarkedTileStatus(
-			'Tile marked at ' + Math.round(x) + ', ' + Math.round(z)
+			`Tile marked at ${Math.round(x)}, ${Math.round(z)}`
 		);
-
-		// Add pulsing animation for the marked tile
-		this.addMarkedTileAnimation(markedTileMesh);
-	}
-
-	addMarkedTileAnimation(mesh) {
-		// Pulse animation data
-		const animationData = {
-			baseScale: 1.0,
-			pulseFactor: 0.05,
-			elapsedTime: 0,
-		};
-
-		// Store the animation in mesh userData
-		mesh.userData.animation = animationData;
 	}
 
 	captureCube() {
@@ -333,9 +325,6 @@ export class Game {
 		this.score += 100;
 		this.ui.updateScore(this.score);
 
-		// Trigger particle effect at cube position
-		triggerParticles(this.captureParticles, cube.mesh.position, 0x00ffff);
-
 		// Remove cube
 		this.level.removeCube(cube);
 
@@ -345,16 +334,16 @@ export class Game {
 
 	captureForbiddenCube(cube) {
 		// Penalty for capturing forbidden cube
-		this.level.shrinkPlatform();
-
-		// Trigger particle effect at cube position
-		triggerParticles(this.captureParticles, cube.mesh.position, 0xff0000);
+		// Remove 3 lines of cubes from the platform
+		for (let i = 0; i < 3; i++) {
+			this.level.shrinkPlatform();
+		}
 
 		// Remove cube
 		this.level.removeCube(cube);
 
-		// Create capture effect (red color)
-		this.createCaptureEffect(cube.mesh.position, 0xff0000);
+		// Visual feedback
+		this.ui.updateMessage('Forbidden cube captured! Platform shrinking!', 2000);
 	}
 
 	captureAdvantageCube(cube) {
@@ -367,60 +356,80 @@ export class Game {
 		this.score += 50;
 		this.ui.updateScore(this.score);
 
-		// Trigger particle effect at cube position
-		triggerParticles(this.captureParticles, cube.mesh.position, 0x00ff88);
-
 		// Remove cube
 		this.level.removeCube(cube);
 
 		// Create capture effect (green color)
-		this.createCaptureEffect(cube.mesh.position, 0x00ff88);
+		this.createCaptureEffect(cube.mesh.position, 0x00ff00);
 	}
 
 	activateAdvantage() {
 		if (!this.activatedAdvantage) return;
 
-		// Create 3x3 area effect
 		const center = this.activatedAdvantage.position;
-		const areaSize = 1;
+		const areaSize = 1; // 3x3 area
 
-		// Trigger area particles
-		triggerAdvantageAreaParticles(
-			this.advantageAreaParticles,
-			new THREE.Vector3(center.x, 0.1, center.y)
-		);
-
-		// Get all cubes in the 3x3 area
+		// Find all cubes in the 3x3 area
 		const capturedCubes = [];
+		const startX = center.x - areaSize;
+		const endX = center.x + areaSize;
+		const startZ = center.y - areaSize;
+		const endZ = center.y + areaSize;
 
-		for (let x = center.x - areaSize; x <= center.x + areaSize; x++) {
-			for (let z = center.y - areaSize; z <= center.y + areaSize; z++) {
-				const cubes = this.level.getCubesAtPosition(x, z);
-				capturedCubes.push(...cubes);
+		for (let i = 0; i < this.level.cubes.length; i++) {
+			const cube = this.level.cubes[i];
+			const cubeX = Math.round(cube.mesh.position.x);
+			const cubeZ = Math.round(cube.mesh.position.z);
+
+			if (
+				cubeX >= startX &&
+				cubeX <= endX &&
+				cubeZ >= startZ &&
+				cubeZ <= endZ
+			) {
+				capturedCubes.push(cube);
 			}
 		}
 
 		// Process each cube in the advantage area
+		let hasChain = false;
 		capturedCubes.forEach((cube) => {
-			if (cube.type === 'normal') {
+			if (cube.type === 'advantage') {
+				// This will trigger a chain reaction
+				hasChain = true;
+				// Store the position before removing
+				const position = new THREE.Vector2(
+					cube.mesh.position.x,
+					cube.mesh.position.z
+				);
+
+				// Remove the cube first
+				this.level.removeCube(cube);
+
+				// Add points
+				this.score += 150;
+
+				// Create advantage effect
+				this.createAdvantageEffect(
+					new THREE.Vector3(position.x, 0.5, position.y),
+					areaSize
+				);
+
+				// Trigger chain reaction in the next frame
+				setTimeout(() => {
+					this.activatedAdvantage = { position };
+					this.activateAdvantage();
+				}, 200);
+			} else if (cube.type === 'normal') {
 				this.score += 100;
-
-				// Trigger particle effect at cube position
-				triggerParticles(this.captureParticles, cube.mesh.position, 0x00ffff);
-
 				this.level.removeCube(cube);
-			} else if (cube.type === 'advantage') {
-				this.score += 50;
-
-				// Trigger particle effect at cube position
-				triggerParticles(this.captureParticles, cube.mesh.position, 0x00ff88);
-
-				this.level.removeCube(cube);
+			} else if (cube.type === 'forbidden') {
+				// Don't remove forbidden cubes with advantage
+				// But no penalty either
 			}
-			// Don't capture forbidden cubes with advantage
 		});
 
-		// Create advantage effect
+		// Create advantage effect (white blast)
 		this.createAdvantageEffect(
 			new THREE.Vector3(center.x, 0.1, center.y),
 			areaSize
@@ -429,19 +438,19 @@ export class Game {
 		// Update score
 		this.ui.updateScore(this.score);
 
-		// Reset advantage
-		this.activatedAdvantage = null;
+		// Only clear advantage if no chain reaction
+		if (!hasChain) {
+			this.activatedAdvantage = null;
+		}
 	}
 
-	createCaptureEffect(position, color = 0x00ffff) {
+	createCaptureEffect(position, color = 0x0099ff) {
 		// Create effect
 		const geometry = new THREE.BoxGeometry(1, 1, 1);
-		const material = new THREE.MeshStandardMaterial({
+		const material = new THREE.MeshBasicMaterial({
 			color: color,
 			transparent: true,
 			opacity: 0.7,
-			emissive: color,
-			emissiveIntensity: 1.0,
 		});
 
 		const effect = new THREE.Mesh(geometry, material);
@@ -473,42 +482,43 @@ export class Game {
 	}
 
 	createAdvantageEffect(position, size) {
-		// Create effect
+		// Create white blast effect for advantage cube explosion
 		const geometry = new THREE.BoxGeometry(size * 2 + 1, 0.5, size * 2 + 1);
-		const material = new THREE.MeshStandardMaterial({
-			color: 0x00ff88,
+		const material = new THREE.MeshBasicMaterial({
+			color: 0xffffff,
 			transparent: true,
-			opacity: 0.5,
-			emissive: 0x00ff88,
-			emissiveIntensity: 1.0,
+			opacity: 0.8,
 		});
 
 		const effect = new THREE.Mesh(geometry, material);
 		effect.position.copy(position);
 		this.scene.add(effect);
 
-		// Animation for the effect
-		const startScale = 1;
+		// Animate the effect
+		const startScale = 0.5;
 		const endScale = 1.5;
-		const duration = 1.0;
-		let elapsed = 0;
+		const duration = 0.5;
 
-		const animate = () => {
-			elapsed += 0.016;
-			const progress = elapsed / duration;
+		let elapsedTime = 0;
+		const updateEffect = (delta) => {
+			elapsedTime += delta;
+			const progress = Math.min(elapsedTime / duration, 1);
 
-			if (progress < 1) {
-				const scale = startScale + (endScale - startScale) * progress;
-				effect.scale.set(scale, scale, scale);
-				effect.material.opacity = 0.5 * (1 - progress);
+			// Scale up and fade out
+			const scale = startScale + (endScale - startScale) * progress;
+			effect.scale.set(scale, scale, scale);
+			effect.material.opacity = 0.8 * (1 - progress);
 
-				requestAnimationFrame(animate);
-			} else {
+			if (progress >= 1) {
+				// Animation complete, remove the effect
 				this.scene.remove(effect);
+				return true; // signal completion
 			}
+			return false;
 		};
 
-		animate();
+		// Add to animation loop
+		this.addAnimation(updateEffect);
 	}
 
 	startLevel(levelNumber) {
@@ -594,10 +604,8 @@ export class Game {
 
 		const delta = this.clock.getDelta();
 
-		// Update player
-		if (this.player) {
-			this.player.update(delta);
-		}
+		// Update camera
+		this.updateCamera(delta);
 
 		// Update level
 		this.level.update(delta);
@@ -611,13 +619,6 @@ export class Game {
 		if (this.level.isGameOver()) {
 			this.endGame();
 		}
-
-		// Update marked tile animation
-		this.updateMarkedTileAnimation(delta);
-
-		// Update particle effects
-		updateParticles(this.captureParticles, delta);
-		updateAdvantageAreaParticles(this.advantageAreaParticles, delta);
 
 		// Update UI
 		this.ui.updateCubesLeft(this.level.getRemainingCubes());
@@ -654,13 +655,37 @@ export class Game {
 	}
 
 	animate() {
+		if (this.gameOver) return;
+
 		requestAnimationFrame(() => this.animate());
 
-		// Update game state
-		this.update();
+		// Handle paused state
+		if (this.paused) return;
 
-		// Render scene with post-processing
-		if (this.composer) {
+		// Calculate delta time
+		const delta = this.clock.getDelta();
+
+		// Update level
+		this.level.update(delta);
+
+		// Update animations
+		this.updateAnimations(delta);
+
+		// Check if level is complete
+		if (this.level.isLevelComplete()) {
+			this.startLevel(this.currentLevel + 1);
+		}
+
+		// Check if game is over
+		if (this.level.isGameOver()) {
+			this.loseLife();
+		}
+
+		// Update camera position for fluid movement
+		this.updateCamera(delta);
+
+		// Render scene
+		if (this.composer && typeof THREE.EffectComposer !== 'undefined') {
 			this.composer.render();
 		} else {
 			this.renderer.render(this.scene, this.camera);
@@ -689,185 +714,22 @@ export class Game {
 		}, 2000);
 	}
 
-	setupLoadingManager() {
-		// Show loading progress
-		const loadingScreen = document.getElementById('loading-screen');
-		const loadingBar = document.getElementById('loading-bar');
-		const loadingText = document.getElementById('loading-text');
-
-		this.loadingManager.onProgress = (url, itemsLoaded, itemsTotal) => {
-			const progress = (itemsLoaded / itemsTotal) * 100;
-			loadingBar.style.width = progress + '%';
-			loadingText.textContent = `Loading ${Math.floor(progress)}%`;
-		};
-
-		this.loadingManager.onLoad = () => {
-			// Hide loading screen with fade out animation
-			loadingScreen.style.opacity = 0;
-			loadingScreen.style.transition = 'opacity 1s';
-
-			// Remove loading screen after fade out
-			setTimeout(() => {
-				loadingScreen.style.display = 'none';
-
-				// Show tutorial if it's first time
-				if (this.showTutorial) {
-					document.getElementById('tutorial').style.display = 'block';
-
-					// Add event listener for tutorial button
-					document
-						.getElementById('tutorial-button')
-						.addEventListener('click', () => {
-							document.getElementById('tutorial').style.display = 'none';
-							this.showTutorial = false;
-						});
-				}
-			}, 1000);
-
-			// Start game
-			this.gameStarted = true;
-		};
-	}
-
-	async setupPostProcessing() {
-		// Create composer
-		this.composer = new EffectComposer(this.renderer);
-
-		// Add render pass
-		const renderPass = new RenderPass(this.scene, this.camera);
-		this.composer.addPass(renderPass);
-
-		// Add bloom pass for glow effects
-		this.bloomPass = new UnrealBloomPass(
-			new THREE.Vector2(window.innerWidth, window.innerHeight),
-			0.5, // Bloom strength
-			0.4, // Bloom radius
-			0.85 // Bloom threshold
-		);
-		this.composer.addPass(this.bloomPass);
-
-		// Add final shader pass
-		const copyPass = new ShaderPass(CopyShader);
-		copyPass.renderToScreen = true;
-		this.composer.addPass(copyPass);
-	}
-
-	async setupSkybox() {
-		// Create skybox texture using our utility
-		const skyboxTextures = createDigitalSkybox(
-			this.renderer,
-			0x000022,
-			0x003366,
-			0x0088aa
-		);
-
-		// Create skybox
-		const skyboxSize = 80;
-		const skyboxGeometry = new THREE.BoxGeometry(
-			skyboxSize,
-			skyboxSize,
-			skyboxSize
-		);
-
-		// Create materials for each face
-		const skyboxMaterials = skyboxTextures.map(
-			(texture) =>
-				new THREE.MeshBasicMaterial({
-					map: texture,
-					side: THREE.BackSide,
-				})
-		);
-
-		const skybox = new THREE.Mesh(skyboxGeometry, skyboxMaterials);
-		this.scene.add(skybox);
-
-		return Promise.resolve(); // Resolve immediately since we're not actually doing async operations
-	}
-
-	async setupEnvironmentMap() {
+	setupPostProcessing() {
 		try {
-			// For now, we'll just resolve immediately without a real environment map
-			// In a full implementation, we'd load proper HDR environment maps
-			this.envMap = null;
-			return Promise.resolve();
+			console.log('Setting up post-processing effects...');
+			// Basic implementation that doesn't require additional libraries
+			// We can expand this later if needed
+
+			// Create a simple post-processing effect using CSS filters for the whole page
+			this.renderer.domElement.style.filter = 'brightness(1.1) contrast(1.05)';
+
+			console.log('Post-processing setup complete');
 		} catch (error) {
-			console.error('Error loading environment map:', error);
-			this.envMap = null;
-			return Promise.resolve();
+			console.warn(
+				'Post-processing setup failed, continuing without effects:',
+				error
+			);
+			// Don't throw - this is non-critical, we can continue without post-processing
 		}
-	}
-
-	setupParticleSystems() {
-		// Create particle systems for effects
-		this.captureParticles = createCaptureParticles(0x00ffff, 100);
-		this.scene.add(this.captureParticles);
-
-		// Create advantage area particles
-		this.advantageAreaParticles = createAdvantageAreaParticles(0x00ff88, 3);
-		this.scene.add(this.advantageAreaParticles);
-	}
-
-	setupLights() {
-		// Main ambient light
-		const ambientLight = new THREE.AmbientLight(0x222244, 0.5);
-		this.scene.add(ambientLight);
-
-		// Main directional light (key light)
-		const directionalLight = new THREE.DirectionalLight(0xeeeeff, 0.8);
-		directionalLight.position.set(10, 20, 10);
-		directionalLight.castShadow = true;
-
-		// Better shadow settings
-		directionalLight.shadow.mapSize.width = 2048;
-		directionalLight.shadow.mapSize.height = 2048;
-		directionalLight.shadow.camera.near = 1;
-		directionalLight.shadow.camera.far = 50;
-		directionalLight.shadow.camera.left = -15;
-		directionalLight.shadow.camera.right = 15;
-		directionalLight.shadow.camera.top = 15;
-		directionalLight.shadow.camera.bottom = -15;
-		directionalLight.shadow.bias = -0.0005;
-
-		this.scene.add(directionalLight);
-
-		// Add rim light from back
-		const rimLight = new THREE.DirectionalLight(0x0088ff, 0.5);
-		rimLight.position.set(-5, 5, -10);
-		this.scene.add(rimLight);
-
-		// Add floor spotlight for dramatic effect
-		const spotlight = new THREE.SpotLight(0x00ffff, 0.3);
-		spotlight.position.set(0, 10, 0);
-		spotlight.angle = Math.PI / 4;
-		spotlight.penumbra = 0.5;
-		spotlight.decay = 2;
-		spotlight.distance = 30;
-		spotlight.castShadow = true;
-		spotlight.shadow.mapSize.width = 1024;
-		spotlight.shadow.mapSize.height = 1024;
-
-		this.scene.add(spotlight);
-	}
-
-	updateMarkedTileAnimation(delta) {
-		if (!this.markedTile || !this.markedTile.mesh) return;
-
-		const mesh = this.markedTile.mesh;
-		const anim = mesh.userData.animation;
-
-		if (!anim) return;
-
-		// Update elapsed time
-		anim.elapsedTime += delta;
-
-		// Calculate pulse effect
-		const pulse = Math.sin(anim.elapsedTime * 5) * anim.pulseFactor;
-
-		// Apply scale
-		const scale = anim.baseScale + pulse;
-		mesh.scale.set(scale, 1, scale);
-
-		// Rotate slowly
-		mesh.rotation.y += delta * 0.5;
 	}
 }

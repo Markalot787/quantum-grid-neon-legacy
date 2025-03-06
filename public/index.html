@@ -13,7 +13,7 @@
 			body {
 				margin: 0;
 				overflow: hidden;
-				font-family: 'Orbitron', sans-serif;
+				font-family: 'Orbitron', Arial, sans-serif;
 				background-color: #000;
 			}
 			canvas {
@@ -24,52 +24,80 @@
 				top: 10px;
 				width: 100%;
 				text-align: center;
-				color: #00ffff;
+				color: #fff;
 				z-index: 100;
 				pointer-events: none;
-				font-size: 24px;
-				text-shadow: 0 0 5px rgba(0, 255, 255, 0.7);
-				letter-spacing: 1px;
+				font-family: 'Orbitron', sans-serif;
+				text-shadow: 0 0 10px #00ffff;
 			}
 			#score {
 				position: absolute;
 				top: 10px;
 				left: 10px;
-				color: #00ffff;
+				color: #00ff00;
+				font-size: 24px;
+				font-family: 'Orbitron', sans-serif;
+				text-shadow: 0 0 10px #00ff00;
 				z-index: 100;
 				pointer-events: none;
-				font-size: 18px;
-				text-shadow: 0 0 5px rgba(0, 255, 255, 0.7);
 			}
 			#level {
 				position: absolute;
 				top: 40px;
 				left: 10px;
-				color: #00ffff;
+				color: #00ff00;
+				font-size: 24px;
+				font-family: 'Orbitron', sans-serif;
+				text-shadow: 0 0 10px #00ff00;
 				z-index: 100;
 				pointer-events: none;
-				font-size: 18px;
-				text-shadow: 0 0 5px rgba(0, 255, 255, 0.7);
 			}
 			#cubes-left {
 				position: absolute;
 				top: 70px;
 				left: 10px;
-				color: #00ffff;
+				color: #00ff00;
+				font-size: 24px;
+				font-family: 'Orbitron', sans-serif;
+				text-shadow: 0 0 10px #00ff00;
 				z-index: 100;
 				pointer-events: none;
-				font-size: 18px;
-				text-shadow: 0 0 5px rgba(0, 255, 255, 0.7);
+			}
+			#lives {
+				position: absolute;
+				top: 10px;
+				right: 10px;
+				color: #ff0000;
+				font-size: 24px;
+				font-family: 'Orbitron', sans-serif;
+				text-shadow: 0 0 10px #ff0000;
+				z-index: 100;
+				pointer-events: none;
+			}
+			#message {
+				position: absolute;
+				top: 100px;
+				left: 0;
+				width: 100%;
+				color: #ffffff;
+				font-size: 24px;
+				text-align: center;
+				font-family: 'Orbitron', sans-serif;
+				text-shadow: 0 0 10px #ffffff;
+				opacity: 0;
+				transition: opacity 0.5s;
+				z-index: 100;
+				pointer-events: none;
 			}
 			#controls {
 				position: absolute;
 				bottom: 10px;
-				width: 100%;
-				text-align: center;
-				color: #00ffff;
+				left: 10px;
+				color: #ffffff;
+				font-size: 12px;
+				text-shadow: 1px 1px 1px #000000;
 				z-index: 100;
 				pointer-events: none;
-				text-shadow: 0 0 5px rgba(0, 255, 255, 0.7);
 			}
 			#payment-modal {
 				display: none;
@@ -78,43 +106,36 @@
 				left: 0;
 				width: 100%;
 				height: 100%;
-				background-color: rgba(0, 0, 0, 0.8);
+				background-color: rgba(0, 0, 0, 0.7);
 				z-index: 1000;
-				backdrop-filter: blur(5px);
 			}
 			.modal-content {
 				position: absolute;
 				top: 50%;
 				left: 50%;
 				transform: translate(-50%, -50%);
-				background-color: rgba(20, 20, 40, 0.9);
+				background-color: #1a1a2e;
 				padding: 30px;
-				border-radius: 10px;
+				border-radius: 5px;
 				width: 400px;
 				color: #fff;
-				border: 1px solid #00ffff;
-				box-shadow: 0 0 20px rgba(0, 255, 255, 0.4);
+				font-family: 'Orbitron', sans-serif;
+				border: 2px solid #00ff00;
+				box-shadow: 0 0 20px rgba(0, 255, 0, 0.5);
 			}
 			.modal-content h2 {
 				margin-top: 0;
-				color: #00ffff;
+				color: #00ff00;
 			}
 			.modal-content button {
 				padding: 10px 20px;
-				background-color: #00ccaa;
-				color: #000;
+				background-color: #00cc00;
+				color: white;
 				border: none;
 				border-radius: 4px;
 				cursor: pointer;
 				margin-top: 20px;
 				font-family: 'Orbitron', sans-serif;
-				font-weight: bold;
-				transition: all 0.3s ease;
-			}
-			.modal-content button:hover {
-				background-color: #00ffaa;
-				transform: translateY(-3px);
-				box-shadow: 0 5px 15px rgba(0, 255, 170, 0.3);
 			}
 			.modal-content .close {
 				position: absolute;
@@ -122,7 +143,7 @@
 				right: 10px;
 				font-size: 20px;
 				cursor: pointer;
-				color: #00ffff;
+				color: #00ff00;
 			}
 			#gameOverScreen {
 				display: none;
@@ -131,164 +152,156 @@
 				left: 0;
 				width: 100%;
 				height: 100%;
-				background-color: rgba(0, 0, 0, 0.8);
+				background-color: rgba(0, 0, 0, 0.7);
 				z-index: 1000;
 				color: white;
 				text-align: center;
-				backdrop-filter: blur(5px);
+				font-family: 'Orbitron', sans-serif;
 			}
 			#gameOverScreen div {
 				position: absolute;
 				top: 50%;
 				left: 50%;
 				transform: translate(-50%, -50%);
+				background-color: #1a1a2e;
+				padding: 30px;
+				border-radius: 10px;
+				border: 2px solid #ff0000;
+				box-shadow: 0 0 20px rgba(255, 0, 0, 0.5);
 			}
 			#gameOverScreen h1 {
 				font-size: 42px;
 				margin-bottom: 20px;
-				color: #00ffff;
-				text-shadow: 0 0 10px rgba(0, 255, 255, 0.8);
-				letter-spacing: 3px;
+				color: #ff0000;
 			}
 			#gameOverScreen button {
-				padding: 12px 24px;
-				background-color: #00ccaa;
-				color: #000;
+				padding: 10px 20px;
+				background-color: #00cc00;
+				color: white;
 				border: none;
 				border-radius: 4px;
 				cursor: pointer;
 				margin-top: 20px;
 				font-size: 18px;
 				font-family: 'Orbitron', sans-serif;
-				font-weight: bold;
-				transition: all 0.3s ease;
-			}
-			#gameOverScreen button:hover {
-				background-color: #00ffaa;
-				transform: translateY(-3px);
-				box-shadow: 0 5px 15px rgba(0, 255, 170, 0.3);
 			}
 			#markedTile {
 				position: absolute;
 				bottom: 10px;
 				right: 10px;
-				color: #00ffff;
+				color: #fff;
 				z-index: 100;
 				font-size: 18px;
-				text-shadow: 0 0 5px rgba(0, 255, 255, 0.7);
+				font-family: 'Orbitron', sans-serif;
 			}
-			.tutorial {
+			#game-over {
 				position: absolute;
 				top: 50%;
 				left: 50%;
 				transform: translate(-50%, -50%);
-				background-color: rgba(20, 20, 40, 0.8);
-				padding: 30px;
+				background: rgba(0, 0, 0, 0.8);
+				color: #ff0000;
+				padding: 20px;
 				border-radius: 10px;
-				max-width: 600px;
 				text-align: center;
-				color: #fff;
-				border: 1px solid #00ffff;
-				box-shadow: 0 0 20px rgba(0, 255, 255, 0.4);
-				z-index: 500;
+				font-family: 'Orbitron', sans-serif;
 				display: none;
 			}
-			.tutorial h2 {
-				color: #00ffff;
+			#restart-btn {
+				margin-top: 20px;
+				padding: 10px 20px;
+				background: #00ff00;
+				color: #000000;
+				border: none;
+				border-radius: 5px;
+				cursor: pointer;
+				font-family: 'Orbitron', sans-serif;
+				font-size: 16px;
+			}
+			#payment-btn {
+				margin-top: 20px;
+				padding: 10px 20px;
+				background: #00aaff;
+				color: #ffffff;
+				border: none;
+				border-radius: 5px;
+				cursor: pointer;
+				font-family: 'Orbitron', sans-serif;
+				font-size: 16px;
+			}
+			#tutorial {
+				position: absolute;
+				top: 50%;
+				left: 50%;
+				transform: translate(-50%, -50%);
+				background: rgba(0, 0, 0, 0.85);
+				color: #ffffff;
+				padding: 20px;
+				border-radius: 10px;
+				box-shadow: 0 0 20px rgba(0, 255, 0, 0.5);
+				max-width: 600px;
+				width: 80%;
+				font-family: 'Orbitron', sans-serif;
+				z-index: 100;
+				text-align: left;
+				display: none;
+			}
+			#tutorial h2 {
+				color: #00ff00;
+				text-align: center;
 				margin-top: 0;
 			}
-			.tutorial button {
+			#tutorial ul {
+				padding-left: 20px;
+			}
+			#tutorial li {
+				margin-bottom: 10px;
+			}
+			#tutorial-close {
+				display: block;
+				margin: 20px auto 0;
 				padding: 10px 20px;
-				background-color: #00ccaa;
-				color: #000;
+				background: #00ff00;
+				color: #000000;
 				border: none;
-				border-radius: 4px;
+				border-radius: 5px;
 				cursor: pointer;
-				margin-top: 20px;
 				font-family: 'Orbitron', sans-serif;
-				font-weight: bold;
+				font-size: 16px;
 			}
-			.loading-screen {
-				position: fixed;
-				top: 0;
-				left: 0;
-				width: 100%;
-				height: 100%;
-				background-color: #000;
-				display: flex;
-				justify-content: center;
-				align-items: center;
-				flex-direction: column;
-				z-index: 9999;
-				transition: opacity 1s ease;
+			.cube-example {
+				display: inline-block;
+				width: 15px;
+				height: 15px;
+				margin-right: 5px;
+				vertical-align: middle;
 			}
-			.loading-progress {
-				width: 300px;
-				height: 5px;
-				background-color: #222;
-				margin-top: 20px;
-				border-radius: 3px;
-				overflow: hidden;
+			.normal-cube {
+				background-color: #aaaaaa;
 			}
-			.loading-bar {
-				height: 100%;
-				width: 0%;
-				background-color: #00ffff;
-				transition: width 0.3s;
+			.forbidden-cube {
+				background-color: #000000;
+				border: 1px solid #ff0000;
 			}
-			.loading-text {
-				color: #00ffff;
-				font-family: 'Orbitron', sans-serif;
-				margin-top: 10px;
-			}
-			.loading-title {
-				color: #00ffff;
-				font-family: 'Orbitron', sans-serif;
-				font-size: 32px;
-				margin-bottom: 20px;
-				letter-spacing: 3px;
-				text-shadow: 0 0 10px rgba(0, 255, 255, 0.6);
+			.advantage-cube {
+				background-color: #00ff00;
 			}
 		</style>
 	</head>
 	<body>
-		<div id="loading-screen" class="loading-screen">
-			<div class="loading-title">QUANTUM GRID: NEON LEGACY</div>
-			<div class="loading-progress">
-				<div id="loading-bar" class="loading-bar"></div>
-			</div>
-			<div id="loading-text" class="loading-text">Loading 0%</div>
-		</div>
-
 		<div id="info">Quantum Grid: Neon Legacy</div>
 		<div id="score">Score: 0</div>
 		<div id="level">Level: 1</div>
 		<div id="cubes-left">Cubes: 0</div>
-		<div id="markedTile">No tile marked</div>
+		<div id="lives">Lives: 3</div>
+		<div id="message"></div>
 		<div id="controls">
 			<p>
 				WASD to move | Space to mark/capture | R to activate advantage | ESC to
 				pause
 			</p>
 		</div>
-		<div id="tutorial" class="tutorial">
-			<h2>How to Play</h2>
-			<p>Welcome to Quantum Grid: Neon Legacy!</p>
-			<p>
-				Your goal is to capture the gray cubes by marking the floor beneath
-				them.
-			</p>
-			<p>
-				Avoid the black (forbidden) cubes and use green (advantage) cubes to
-				clear larger areas.
-			</p>
-			<p><strong>Controls:</strong></p>
-			<p>WASD - Move character</p>
-			<p>SPACE - Mark/capture cubes</p>
-			<p>R - Activate advantage</p>
-			<p>ESC - Pause game</p>
-			<button id="tutorial-button">Got it!</button>
-		</div>
+		<div id="markedTile">No tile marked</div>
 		<div id="payment-modal">
 			<div class="modal-content">
 				<span class="close">&times;</span>
@@ -303,43 +316,62 @@
 				</div>
 			</div>
 		</div>
-		<div id="gameOverScreen">
-			<div>
-				<h1>Game Over</h1>
-				<p id="finalScore">Your score: 0</p>
-				<button id="restartButton">Play Again</button>
-			</div>
+		<div id="game-over">
+			<h2>GAME OVER</h2>
+			<div id="final-score">Final Score: 0</div>
+			<button id="restart-btn">Play Again</button>
 		</div>
-
-		<!-- Error handler for debugging -->
-		<script>
-			window.addEventListener('error', function (event) {
-				console.error(
-					'ERROR:',
-					event.message,
-					'at',
-					event.filename,
-					'line',
-					event.lineno
-				);
-
-				const loadingText = document.getElementById('loading-text');
-				if (loadingText) {
-					loadingText.textContent = 'Error: ' + event.message;
-					loadingText.style.color = '#ff0000';
-				}
-
-				return false;
-			});
-
-			// Initialize loading screen
-			document.getElementById('loading-bar').style.width = '5%';
-		</script>
+		<div id="tutorial">
+			<h2>How to Play Quantum Grid: Neon Legacy</h2>
+			<ul>
+				<li>
+					<strong>Goal:</strong> Capture normal cubes before they fall off the
+					platform.
+				</li>
+				<li>
+					<strong>Controls:</strong>
+					<ul>
+						<li>WASD or Arrow Keys - Move your character</li>
+						<li>
+							SPACE - Mark a tile to capture a cube / Activate marked tile
+						</li>
+						<li>R - Activate advantage (after capturing a green cube)</li>
+					</ul>
+				</li>
+				<li>
+					<strong>Cube Types:</strong>
+					<ul>
+						<li>
+							<span class="cube-example normal-cube"></span> Normal Cubes -
+							Capture these for points
+						</li>
+						<li>
+							<span class="cube-example forbidden-cube"></span> Forbidden Cubes
+							- DO NOT capture! Will remove 3 rows from the platform
+						</li>
+						<li>
+							<span class="cube-example advantage-cube"></span> Advantage Cubes
+							- Capture and activate to clear a 3x3 area
+						</li>
+					</ul>
+				</li>
+				<li>
+					<strong>Strategy:</strong>
+					<ul>
+						<li>Use advantage cubes to clear multiple cubes at once</li>
+						<li>
+							Advantage cubes can trigger chain reactions when they explode
+						</li>
+						<li>Completing levels extends your platform</li>
+						<li>You have 3 lives - use them wisely!</li>
+					</ul>
+				</li>
+			</ul>
+			<button id="tutorial-close">Got it!</button>
+		</div>
 
 		<!-- Load Stripe.js -->
 		<script src="https://js.stripe.com/v3/"></script>
-
-		<!-- Main game script - load this as a module -->
 		<script type="module" src="main.js"></script>
 	</body>
 </html>

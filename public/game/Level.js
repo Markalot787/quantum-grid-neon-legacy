@@ -1,6 +1,5 @@
-import { THREE } from '../threeImports.js';
+import * as THREE from 'https://cdn.jsdelivr.net/npm/three@0.157.0/build/three.module.js';
 import { Cube } from './Cube.js';
-import { createGridTexture } from '../assets/textures/grid.js';
 
 export class Level {
 	constructor(game) {
@@ -29,26 +28,9 @@ export class Level {
 		this.platformWidth = width;
 		this.platformLength = length;
 
-		// Create grid texture
-		const gridTexture = createGridTexture(
-			this.game.renderer,
-			512,
-			512,
-			8,
-			0x111122,
-			0x0088aa,
-			0x00ffff
-		);
-
 		// Create platform geometry
 		const geometry = new THREE.BoxGeometry(width, 0.5, length);
-		const material = new THREE.MeshStandardMaterial({
-			map: gridTexture,
-			metalness: 0.7,
-			roughness: 0.3,
-			emissive: 0x111144,
-			emissiveIntensity: 0.1,
-		});
+		const material = new THREE.MeshLambertMaterial({ color: 0x444444 });
 
 		// Create mesh
 		this.platformMesh = new THREE.Mesh(geometry, material);
