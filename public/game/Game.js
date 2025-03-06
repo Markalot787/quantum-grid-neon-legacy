@@ -598,23 +598,19 @@ export class Game {
 	}
 
 	updateCamera(delta) {
-		if (!this.paused && !this.gameOver) {
-			// Update camera angle
-			this.cameraMovement.angle += delta * this.cameraMovement.speed;
+		// Position camera to show the entire platform
+		const stageLength = this.settings.stageLength;
+		const stageWidth = this.settings.stageWidth;
 
-			// Calculate new camera position
-			const newX =
-				Math.sin(this.cameraMovement.angle) * this.cameraMovement.radius;
-			const newZ =
-				Math.cos(this.cameraMovement.angle) * this.cameraMovement.radius - 8;
+		// Fixed camera position that shows the entire platform
+		this.camera.position.set(
+			stageWidth * 0.7, // Slightly to the right
+			stageLength * 0.7, // Height based on platform length
+			-stageLength * 0.5 // Back enough to see everything
+		);
 
-			// Smoothly update camera position
-			this.camera.position.x += (newX - this.camera.position.x) * 0.05;
-			this.camera.position.z += (newZ - this.camera.position.z) * 0.05;
-
-			// Keep camera looking at the center of action
-			this.camera.lookAt(this.cameraMovement.targetLookAt);
-		}
+		// Look at the center of the platform
+		this.camera.lookAt(new THREE.Vector3(0, 0, stageLength * 0.5));
 	}
 
 	animate() {

@@ -31,143 +31,289 @@ export class Level {
 		this.platformWidth = width;
 		this.platformLength = length;
 
-		// Create grid texture (IQ style)
-		const gridCanvas = createGridTexture('#333333', '#555555', 512);
-		this.gridTexture = new THREE.CanvasTexture(gridCanvas);
-		this.gridTexture.wrapS = THREE.RepeatWrapping;
-		this.gridTexture.wrapT = THREE.RepeatWrapping;
-		this.gridTexture.repeat.set(width, length);
+		// Create platform group
+		const platformGroup = new THREE.Group();
 
 		// Create individual platform tiles for better appearance
-		const tileGroup = new THREE.Group();
-
 		for (let x = -Math.floor(width / 2); x <= Math.floor(width / 2); x++) {
 			for (let z = 0; z < length; z++) {
-				// Create tile geometry and material
+				// Create tile geometry
 				const tileGeometry = new THREE.BoxGeometry(0.95, 0.2, 0.95);
+
+				// Create materials with neon glow for edges
+				const isEvenTile = (x + z) % 2 === 0;
+				const mainColor = isEvenTile ? 0x222244 : 0x333355; // Dark blue/purple base
+
 				const tileMaterial = new THREE.MeshStandardMaterial({
-					map: this.gridTexture,
-					roughness: 0.7,
-					metalness: 0.2,
-					color: (x + z) % 2 === 0 ? 0x444444 : 0x555555, // Checkerboard pattern
+					color: mainColor,
+					roughness: 0.4,
+					metalness: 0.6,
+					emissive: isEvenTile ? 0x000022 : 0x000033,
+					emissiveIntensity: 0.2,
 				});
 
 				// Create tile mesh
 				const tileMesh = new THREE.Mesh(tileGeometry, tileMaterial);
 				tileMesh.position.set(x, -0.1, z);
 				tileMesh.receiveShadow = true;
-				tileMesh.userData = { x, z, exists: true };
+				tileMesh.castShadow = true;
 
-				// Add to group
-				tileGroup.add(tileMesh);
+				// Add neon edge glow for some tiles
+				if (
+					x === -Math.floor(width / 2) ||
+					x === Math.floor(width / 2) ||
+					z === 0 ||
+					z === length - 1 ||
+					Math.random() < 0.1
+				) {
+					// Create edge geometry
+					const edgeGeometry = new THREE.EdgesGeometry(tileGeometry);
+
+					// Create edge material with neon glow
+					const edgeColor =
+						z % 3 === 0 ? 0x00ffff : z % 3 === 1 ? 0xff00ff : 0x00ff88;
+					const edgeMaterial = new THREE.LineBasicMaterial({
+						color: edgeColor,
+						linewidth: 1,
+					});
+
+					const edges = new THREE.LineSegments(edgeGeometry, edgeMaterial);
+					tileMesh.add(edges);
+				}
+
+				// Add to platform group
+				platformGroup.add(tileMesh);
 
 				// Track platform tiles
-				this.platform.push({ x, z, exists: true, mesh: tileMesh });
+				this.platform.push({
+					x,
+					z,
+					exists: true,
+					mesh: tileMesh,
+				});
 			}
 		}
 
-		// Create edge material for a more defined look
-		const edgeMaterial = new THREE.MeshStandardMaterial({
-			color: 0x333333,
-			roughness: 0.8,
-			metalness: 0.3,
+		// Create base platform with neon trim
+		const baseGeometry = new THREE.BoxGeometry(width + 0.2, 0.3, length + 0.2);
+		const baseMaterial = new THREE.MeshStandardMaterial({
+			color: 0x111122,
+			roughness: 0.5,
+			metalness: 0.7,
+			emissive: 0x000011,
+			emissiveIntensity: 0.2,
 		});
 
-		// Add bottom platform for cohesiveness
-		const platformBase = new THREE.Mesh(
-			new THREE.BoxGeometry(width + 0.1, 0.1, length + 0.1),
-			edgeMaterial
-		);
-		platformBase.position.set(0, -0.2, length / 2 - 0.5);
-		platformBase.receiveShadow = true;
+		const baseMesh = new THREE.Mesh(baseGeometry, baseMaterial);
+		baseMesh.position.set(0, -0.3, length / 2 - 0.5);
+		baseMesh.receiveShadow = true;
+
+		// Add neon trim to base
+		const trimGeometry = new THREE.BoxGeometry(width + 0.3, 0.05, length + 0.3);
+		const trimMaterial = new THREE.MeshStandardMaterial({
+			color: 0x00ffff,
+			roughness: 0.2,
+			metalness: 0.8,
+			emissive: 0x00ffff,
+			emissiveIntensity: 0.8,
+			transparent: true,
+			opacity: 0.8,
+		});
+
+		const trimMesh = new THREE.Mesh(trimGeometry, trimMaterial);
+		trimMesh.position.set(0, -0.4, length / 2 - 0.5);
 
 		// Add to scene
-		this.platformMesh = tileGroup;
-		this.game.scene.add(tileGroup);
-		this.game.scene.add(platformBase);
+		this.platformMesh = platformGroup;
+		this.game.scene.add(platformGroup);
+		this.game.scene.add(baseMesh);
+		this.game.scene.add(trimMesh);
 
-		// Add subtle ambient light to better see the platform
-		const ambientLight = new THREE.AmbientLight(0x404040, 0.5);
+		// Create neon grid background
+		this.createNeonBackground();
+
+		// Add atmospheric fog
+		this.game.scene.fog = new THREE.FogExp2(0x000033, 0.03);
+
+		// Add ambient light for base illumination
+		const ambientLight = new THREE.AmbientLight(0x222244, 1.0);
 		this.game.scene.add(ambientLight);
 
-		// Add a background plane with glowing grid lines
-		const gridTextureSize = 2048;
-		const gridTextureCanvas = document.createElement('canvas');
-		gridTextureCanvas.width = gridTextureSize;
-		gridTextureCanvas.height = gridTextureSize;
-		const ctx = gridTextureCanvas.getContext('2d');
+		// Add point lights for neon glow
+		const colors = [0x00ffff, 0xff00ff, 0x00ff88];
+
+		for (let i = 0; i < 3; i++) {
+			const light = new THREE.PointLight(colors[i], 1, 20);
+			const x = (Math.random() - 0.5) * width * 2;
+			const z = Math.random() * length;
+			light.position.set(x, 2 + Math.random() * 3, z);
+			this.game.scene.add(light);
+		}
+	}
+
+	createNeonBackground() {
+		// Create a large plane for the background
+		const bgGeometry = new THREE.PlaneGeometry(100, 100);
+
+		// Create a canvas for the grid texture
+		const canvas = document.createElement('canvas');
+		canvas.width = 1024;
+		canvas.height = 1024;
+		const ctx = canvas.getContext('2d');
 
 		// Fill background
-		ctx.fillStyle = 'rgba(0, 0, 20, 1)';
-		ctx.fillRect(0, 0, gridTextureSize, gridTextureSize);
+		const gradient = ctx.createLinearGradient(0, 0, 0, canvas.height);
+		gradient.addColorStop(0, '#000033');
+		gradient.addColorStop(1, '#000011');
+		ctx.fillStyle = gradient;
+		ctx.fillRect(0, 0, canvas.width, canvas.height);
 
 		// Draw grid lines
-		const gridCount = 32;
-		const gridSize = gridTextureSize / gridCount;
-		ctx.strokeStyle = 'rgba(0, 200, 255, 0.3)';
+		const gridSize = 32;
+		const cellSize = canvas.width / gridSize;
+
+		// Draw cyan grid lines
+		ctx.strokeStyle = 'rgba(0, 255, 255, 0.3)';
+		ctx.lineWidth = 1;
+
+		for (let i = 0; i <= gridSize; i++) {
+			// Vertical lines
+			ctx.beginPath();
+			ctx.moveTo(i * cellSize, 0);
+			ctx.lineTo(i * cellSize, canvas.height);
+			ctx.stroke();
+
+			// Horizontal lines
+			ctx.beginPath();
+			ctx.moveTo(0, i * cellSize);
+			ctx.lineTo(canvas.width, i * cellSize);
+			ctx.stroke();
+		}
+
+		// Draw magenta grid lines (larger grid)
+		ctx.strokeStyle = 'rgba(255, 0, 255, 0.2)';
 		ctx.lineWidth = 2;
 
-		// Vertical lines
-		for (let i = 0; i <= gridCount; i++) {
-			const x = i * gridSize;
+		const largeGridSize = 8;
+		const largeCellSize = canvas.width / largeGridSize;
+
+		for (let i = 0; i <= largeGridSize; i++) {
+			// Vertical lines
 			ctx.beginPath();
-			ctx.moveTo(x, 0);
-			ctx.lineTo(x, gridTextureSize);
+			ctx.moveTo(i * largeCellSize, 0);
+			ctx.lineTo(i * largeCellSize, canvas.height);
+			ctx.stroke();
+
+			// Horizontal lines
+			ctx.beginPath();
+			ctx.moveTo(0, i * largeCellSize);
+			ctx.lineTo(canvas.width, i * largeCellSize);
 			ctx.stroke();
 		}
 
-		// Horizontal lines
-		for (let i = 0; i <= gridCount; i++) {
-			const y = i * gridSize;
-			ctx.beginPath();
-			ctx.moveTo(0, y);
-			ctx.lineTo(gridTextureSize, y);
-			ctx.stroke();
-		}
+		// Add some random "stars" or light points
+		for (let i = 0; i < 100; i++) {
+			const x = Math.random() * canvas.width;
+			const y = Math.random() * canvas.height;
+			const radius = Math.random() * 2 + 1;
 
-		// Create a larger second grid with different color for parallax effect
-		const gridCount2 = 16;
-		const gridSize2 = gridTextureSize / gridCount2;
-		ctx.strokeStyle = 'rgba(255, 0, 255, 0.2)';
-		ctx.lineWidth = 3;
+			const gradient = ctx.createRadialGradient(x, y, 0, x, y, radius);
+			gradient.addColorStop(0, 'rgba(255, 255, 255, 0.8)');
+			gradient.addColorStop(1, 'rgba(255, 255, 255, 0)');
 
-		// Vertical lines
-		for (let i = 0; i <= gridCount2; i++) {
-			const x = i * gridSize2;
+			ctx.fillStyle = gradient;
 			ctx.beginPath();
-			ctx.moveTo(x, 0);
-			ctx.lineTo(x, gridTextureSize);
-			ctx.stroke();
-		}
-
-		// Horizontal lines
-		for (let i = 0; i <= gridCount2; i++) {
-			const y = i * gridSize2;
-			ctx.beginPath();
-			ctx.moveTo(0, y);
-			ctx.lineTo(gridTextureSize, y);
-			ctx.stroke();
+			ctx.arc(x, y, radius, 0, Math.PI * 2);
+			ctx.fill();
 		}
 
 		// Create texture from canvas
-		const gridTexture = new THREE.CanvasTexture(gridTextureCanvas);
-		gridTexture.wrapS = THREE.RepeatWrapping;
-		gridTexture.wrapT = THREE.RepeatWrapping;
-		gridTexture.repeat.set(4, 4);
+		const texture = new THREE.CanvasTexture(canvas);
+		texture.wrapS = THREE.RepeatWrapping;
+		texture.wrapT = THREE.RepeatWrapping;
+		texture.repeat.set(2, 2);
 
-		// Create background plane
-		const bgPlaneGeometry = new THREE.PlaneGeometry(200, 200);
-		const bgPlaneMaterial = new THREE.MeshBasicMaterial({
-			map: gridTexture,
+		// Create material with the texture
+		const material = new THREE.MeshBasicMaterial({
+			map: texture,
 			side: THREE.DoubleSide,
 			transparent: true,
+			opacity: 0.8,
+		});
+
+		// Create mesh and position it
+		const bgMesh = new THREE.Mesh(bgGeometry, material);
+		bgMesh.rotation.x = Math.PI / 2;
+		bgMesh.position.y = -10;
+
+		this.game.scene.add(bgMesh);
+
+		// Add a second background plane with different grid for parallax effect
+		const bgGeometry2 = new THREE.PlaneGeometry(200, 200);
+
+		// Create a canvas for the second grid texture
+		const canvas2 = document.createElement('canvas');
+		canvas2.width = 1024;
+		canvas2.height = 1024;
+		const ctx2 = canvas2.getContext('2d');
+
+		// Fill background (transparent)
+		ctx2.fillStyle = 'rgba(0, 0, 0, 0)';
+		ctx2.fillRect(0, 0, canvas2.width, canvas2.height);
+
+		// Draw larger grid lines
+		const gridSize2 = 16;
+		const cellSize2 = canvas2.width / gridSize2;
+
+		// Draw green grid lines
+		ctx2.strokeStyle = 'rgba(0, 255, 128, 0.15)';
+		ctx2.lineWidth = 3;
+
+		for (let i = 0; i <= gridSize2; i++) {
+			// Vertical lines
+			ctx2.beginPath();
+			ctx2.moveTo(i * cellSize2, 0);
+			ctx2.lineTo(i * cellSize2, canvas2.height);
+			ctx2.stroke();
+
+			// Horizontal lines
+			ctx2.beginPath();
+			ctx2.moveTo(0, i * cellSize2);
+			ctx2.lineTo(canvas2.width, i * cellSize2);
+			ctx2.stroke();
+		}
+
+		// Create texture from second canvas
+		const texture2 = new THREE.CanvasTexture(canvas2);
+		texture2.wrapS = THREE.RepeatWrapping;
+		texture2.wrapT = THREE.RepeatWrapping;
+		texture2.repeat.set(4, 4);
+
+		// Create material with the second texture
+		const material2 = new THREE.MeshBasicMaterial({
+			map: texture2,
+			side: THREE.DoubleSide,
+			transparent: true,
+			opacity: 0.5,
 			depthWrite: false,
 		});
 
-		const bgPlane = new THREE.Mesh(bgPlaneGeometry, bgPlaneMaterial);
-		bgPlane.position.set(0, -50, 0);
-		bgPlane.rotation.x = Math.PI / 2;
-		this.game.scene.add(bgPlane);
+		// Create mesh and position it
+		const bgMesh2 = new THREE.Mesh(bgGeometry2, material2);
+		bgMesh2.rotation.x = Math.PI / 2;
+		bgMesh2.position.y = -20;
+
+		this.game.scene.add(bgMesh2);
+
+		// Animate the background grids
+		const animate = () => {
+			texture.offset.y += 0.0005;
+			texture2.offset.y += 0.0002;
+
+			requestAnimationFrame(animate);
+		};
+
+		animate();
 	}
 
 	generateLevel(levelNumber) {
@@ -247,6 +393,10 @@ export class Level {
 			const { x, z } = positions[i];
 			this.createCube('advantage', x, z);
 		}
+
+		console.log(
+			`Generated wave ${this.waveIndex} with ${normalCount} normal, ${forbiddenCount} forbidden, and ${advantageCount} advantage cubes`
+		);
 	}
 
 	createCube(type, x, z) {
@@ -263,11 +413,10 @@ export class Level {
 			cube.update(delta);
 
 			// Check if cube fell off
-			if (cube.mesh.position.z < -2) {
+			if (cube.mesh && cube.mesh.position.z < -2) {
 				// Handle cube falling off
 				if (cube.type === 'normal') {
 					// Player missed a normal cube
-					// Potential penalty here
 					this.createDestructionEffect(cube.mesh.position);
 				}
 
@@ -372,7 +521,7 @@ export class Level {
 		// Remove cubes on that row
 		for (let i = this.cubes.length - 1; i >= 0; i--) {
 			const cube = this.cubes[i];
-			if (Math.round(cube.mesh.position.z) === row) {
+			if (cube.mesh && Math.round(cube.mesh.position.z) === row) {
 				this.removeCube(cube);
 			}
 		}

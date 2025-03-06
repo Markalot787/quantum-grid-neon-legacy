@@ -8,6 +8,7 @@ export class Cube {
 		this.mesh = null;
 		this.destroyed = false;
 		this.animationPhase = Math.random() * Math.PI * 2; // Random starting phase for animations
+		this.speed = this.game.settings.cubeSpeed; // Store the speed
 
 		// Create cube mesh
 		this.createMesh(x, z);
@@ -98,12 +99,30 @@ export class Cube {
 
 		// Add to scene
 		this.game.scene.add(this.mesh);
+
+		// Debug log
+		console.log(
+			`Created ${this.type} cube at position (${x}, ${z}) with speed ${this.speed}`
+		);
 	}
 
 	update(delta) {
-		// Move cube towards player
-		const speed = this.game.settings.cubeSpeed * delta;
-		this.mesh.position.z -= speed;
+		if (this.destroyed || !this.mesh) return;
+
+		// Move cube towards player (down the platform)
+		const moveDistance = this.speed * delta;
+		this.mesh.position.z -= moveDistance;
+
+		// Debug log every 2 seconds
+		if (Math.random() < 0.01) {
+			console.log(
+				`Cube at (${this.mesh.position.x.toFixed(
+					2
+				)}, ${this.mesh.position.z.toFixed(2)}) moving with speed ${
+					this.speed
+				}, delta: ${delta}`
+			);
+		}
 
 		// For advantage cubes, add a pulsing glow effect
 		if (this.type === 'advantage' && this.mesh.material.emissiveIntensity) {
@@ -139,7 +158,7 @@ export class Cube {
 	}
 
 	checkPlayerCollision() {
-		if (this.destroyed) return;
+		if (this.destroyed || !this.mesh) return;
 
 		const playerPos = this.game.player.getPosition();
 		const cubePos = this.mesh.position;
@@ -155,11 +174,11 @@ export class Cube {
 	}
 
 	destroy() {
-		if (this.destroyed) return;
+		if (this.destroyed || !this.mesh) return;
 
 		this.destroyed = true;
 
-		// Create simple cube destruction effect
+		// Create more advanced destruction effect
 		const particleCount = 30;
 		const particles = [];
 
@@ -264,5 +283,13 @@ export class Cube {
 
 		// Remove the cube
 		this.game.scene.remove(this.mesh);
+		this.mesh = null;
+
+		// Debug log
+		console.log(
+			`Destroyed cube at position (${
+				this.mesh ? this.mesh.position.x : 'unknown'
+			}, ${this.mesh ? this.mesh.position.z : 'unknown'})`
+		);
 	}
 }
