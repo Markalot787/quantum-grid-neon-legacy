@@ -89,6 +89,85 @@ export class Level {
 		// Add subtle ambient light to better see the platform
 		const ambientLight = new THREE.AmbientLight(0x404040, 0.5);
 		this.game.scene.add(ambientLight);
+
+		// Add a background plane with glowing grid lines
+		const gridTextureSize = 2048;
+		const gridTextureCanvas = document.createElement('canvas');
+		gridTextureCanvas.width = gridTextureSize;
+		gridTextureCanvas.height = gridTextureSize;
+		const ctx = gridTextureCanvas.getContext('2d');
+
+		// Fill background
+		ctx.fillStyle = 'rgba(0, 0, 20, 1)';
+		ctx.fillRect(0, 0, gridTextureSize, gridTextureSize);
+
+		// Draw grid lines
+		const gridCount = 32;
+		const gridSize = gridTextureSize / gridCount;
+		ctx.strokeStyle = 'rgba(0, 200, 255, 0.3)';
+		ctx.lineWidth = 2;
+
+		// Vertical lines
+		for (let i = 0; i <= gridCount; i++) {
+			const x = i * gridSize;
+			ctx.beginPath();
+			ctx.moveTo(x, 0);
+			ctx.lineTo(x, gridTextureSize);
+			ctx.stroke();
+		}
+
+		// Horizontal lines
+		for (let i = 0; i <= gridCount; i++) {
+			const y = i * gridSize;
+			ctx.beginPath();
+			ctx.moveTo(0, y);
+			ctx.lineTo(gridTextureSize, y);
+			ctx.stroke();
+		}
+
+		// Create a larger second grid with different color for parallax effect
+		const gridCount2 = 16;
+		const gridSize2 = gridTextureSize / gridCount2;
+		ctx.strokeStyle = 'rgba(255, 0, 255, 0.2)';
+		ctx.lineWidth = 3;
+
+		// Vertical lines
+		for (let i = 0; i <= gridCount2; i++) {
+			const x = i * gridSize2;
+			ctx.beginPath();
+			ctx.moveTo(x, 0);
+			ctx.lineTo(x, gridTextureSize);
+			ctx.stroke();
+		}
+
+		// Horizontal lines
+		for (let i = 0; i <= gridCount2; i++) {
+			const y = i * gridSize2;
+			ctx.beginPath();
+			ctx.moveTo(0, y);
+			ctx.lineTo(gridTextureSize, y);
+			ctx.stroke();
+		}
+
+		// Create texture from canvas
+		const gridTexture = new THREE.CanvasTexture(gridTextureCanvas);
+		gridTexture.wrapS = THREE.RepeatWrapping;
+		gridTexture.wrapT = THREE.RepeatWrapping;
+		gridTexture.repeat.set(4, 4);
+
+		// Create background plane
+		const bgPlaneGeometry = new THREE.PlaneGeometry(200, 200);
+		const bgPlaneMaterial = new THREE.MeshBasicMaterial({
+			map: gridTexture,
+			side: THREE.DoubleSide,
+			transparent: true,
+			depthWrite: false,
+		});
+
+		const bgPlane = new THREE.Mesh(bgPlaneGeometry, bgPlaneMaterial);
+		bgPlane.position.set(0, -50, 0);
+		bgPlane.rotation.x = Math.PI / 2;
+		this.game.scene.add(bgPlane);
 	}
 
 	generateLevel(levelNumber) {
@@ -189,10 +268,21 @@ export class Level {
 				if (cube.type === 'normal') {
 					// Player missed a normal cube
 					// Potential penalty here
+					this.createDestructionEffect(cube.mesh.position);
 				}
 
 				// Remove cube
 				this.removeCube(cube);
+			}
+		}
+
+		// Update destruction effects
+		for (let i = this.destructionEffects.length - 1; i >= 0; i--) {
+			const effect = this.destructionEffects[i];
+			const completed = effect.update(delta);
+
+			if (completed) {
+				this.destructionEffects.splice(i, 1);
 			}
 		}
 
@@ -206,63 +296,63 @@ export class Level {
 	}
 
 	removeCube(cube) {
-		// Remove cube from game arrays
-		this.cubes = this.cubes.filter((c) => c !== cube);
-
-		// Add destruction effect
-		this.createDestructionEffect(cube.mesh.position.clone());
-
 		// Remove from scene
-		this.game.scene.remove(cube.mesh);
+		if (cube.mesh) {
+			this.game.scene.remove(cube.mesh);
+		}
+
+		// Remove from array
+		const index = this.cubes.indexOf(cube);
+		if (index !== -1) {
+			this.cubes.splice(index, 1);
+		}
 	}
 
 	createDestructionEffect(position) {
-		// Create a white flash effect
-		const flashGeometry = new THREE.SphereGeometry(0.5, 16, 16);
-		const flashMaterial = new THREE.MeshBasicMaterial({
+		// Create a flash effect at the position
+		const geometry = new THREE.SphereGeometry(0.5, 8, 8);
+		const material = new THREE.MeshBasicMaterial({
 			color: 0xffffff,
 			transparent: true,
 			opacity: 1,
 		});
 
-		const flash = new THREE.Mesh(flashGeometry, flashMaterial);
+		const flash = new THREE.Mesh(geometry, material);
 		flash.position.copy(position);
 		this.game.scene.add(flash);
 
-		// Animate the flash effect - grow and fade out
-		const startScale = 0.5;
-		const endScale = 2;
-		const duration = 0.5; // seconds
+		// Animation
+		let time = 0;
+		const duration = 0.5;
 
-		let elapsedTime = 0;
 		const updateFlash = (delta) => {
-			elapsedTime += delta;
-			const progress = Math.min(elapsedTime / duration, 1);
+			time += delta;
+			const progress = time / duration;
 
-			// Scale up
-			const scale = startScale + (endScale - startScale) * progress;
-			flash.scale.set(scale, scale, scale);
-
-			// Fade out
-			flash.material.opacity = 1 - progress;
-
-			if (progress >= 1) {
-				// Animation complete, remove the effect
+			if (progress < 1) {
+				const scale = 1 + progress;
+				flash.scale.set(scale, scale, scale);
+				flash.material.opacity = 1 - progress;
+				return false;
+			} else {
 				this.game.scene.remove(flash);
-				return true; // signal completion
+				return true;
 			}
-			return false;
 		};
 
-		// Add to animation loop
-		this.game.addAnimation(updateFlash);
+		// Add to destruction effects
+		this.destructionEffects.push({
+			update: updateFlash,
+		});
 	}
 
 	clearLevel() {
 		// Remove all cubes
 		for (let i = this.cubes.length - 1; i >= 0; i--) {
 			const cube = this.cubes[i];
-			this.game.scene.remove(cube.mesh);
+			if (cube.mesh) {
+				this.game.scene.remove(cube.mesh);
+			}
 		}
 
 		// Clear arrays
@@ -354,6 +444,8 @@ export class Level {
 	getCubesAtPosition(x, z) {
 		// Find all cubes at a specific position
 		return this.cubes.filter((cube) => {
+			if (!cube.mesh) return false;
+
 			// Use approximate position to handle moving cubes
 			const cubeX = Math.round(cube.mesh.position.x);
 			const cubeZ = Math.round(cube.mesh.position.z);

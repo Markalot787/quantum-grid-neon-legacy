@@ -30,6 +30,8 @@ export class SimpleHumanoid {
 		this.rightLeg = this.model.getObjectByName('rightLeg');
 		this.leftArm = this.model.getObjectByName('leftArm');
 		this.rightArm = this.model.getObjectByName('rightArm');
+		this.torso = this.model.getObjectByName('body');
+		this.head = this.model.getObjectByName('head');
 
 		// Animation properties
 		this.direction = new THREE.Vector3(0, 0, 1); // Forward
@@ -149,7 +151,7 @@ export class SimpleHumanoid {
 		} else if (this.animationState === 'walking') {
 			this.animateWalking(delta, 1.0);
 		} else if (this.animationState === 'running') {
-			this.animateWalking(delta, 2.0); // Running is just faster walking
+			this.animateRunning(delta, 2.0); // Running is faster walking with more pronounced movements
 		}
 	}
 
@@ -173,6 +175,15 @@ export class SimpleHumanoid {
 		if (this.leftLeg && this.rightLeg) {
 			this.leftLeg.rotation.x = 0;
 			this.rightLeg.rotation.x = 0;
+		}
+
+		// Subtle head and body movements
+		if (this.head) {
+			this.head.position.y = this.height * 0.8 + breathOffset * 0.5;
+		}
+
+		if (this.torso) {
+			this.torso.position.y = this.height * 0.5 + breathOffset * 0.5;
 		}
 	}
 
@@ -200,6 +211,72 @@ export class SimpleHumanoid {
 
 			this.rightArm.rotation.x = -armAngle;
 			this.rightArm.rotation.z = Math.PI / 8;
+		}
+
+		// Subtle body movement for walking
+		if (this.torso) {
+			this.torso.position.y =
+				this.height * 0.5 +
+				Math.abs(Math.sin(this.walkingTime * speed * 2)) * 0.02;
+			this.torso.rotation.z = Math.sin(this.walkingTime * speed) * 0.05;
+		}
+
+		// Head follows body motion
+		if (this.head) {
+			this.head.rotation.z = -Math.sin(this.walkingTime * speed) * 0.03;
+		}
+	}
+
+	animateRunning(delta, speedMultiplier = 2.0) {
+		const speed = 7.0 * this.animationSpeed * speedMultiplier; // Faster speed for running
+		const legMax = Math.PI / 3; // More pronounced leg movement
+		const armMax = Math.PI / 2.5; // More pronounced arm movement
+
+		this.walkingTime += delta;
+
+		// Calculate limb positions based on sine wave
+		const legAngle = Math.sin(this.walkingTime * speed) * legMax;
+		const armAngle = Math.sin(this.walkingTime * speed + Math.PI) * armMax; // Arms and legs opposite phase
+
+		// Animate legs with more exaggerated movement
+		if (this.leftLeg && this.rightLeg) {
+			this.leftLeg.rotation.x = legAngle;
+			this.rightLeg.rotation.x = -legAngle;
+
+			// Add slight outward rotation when legs are forward
+			this.leftLeg.rotation.y =
+				Math.max(0, Math.sin(this.walkingTime * speed)) * 0.1;
+			this.rightLeg.rotation.y =
+				-Math.max(0, Math.sin(this.walkingTime * speed + Math.PI)) * 0.1;
+		}
+
+		// Animate arms with more exaggerated movement
+		if (this.leftArm && this.rightArm) {
+			this.leftArm.rotation.x = armAngle;
+			this.leftArm.rotation.z = -Math.PI / 6; // More outward stance for running
+
+			this.rightArm.rotation.x = -armAngle;
+			this.rightArm.rotation.z = Math.PI / 6; // More outward stance for running
+		}
+
+		// More pronounced body movement for running
+		if (this.torso) {
+			// Bouncing motion
+			this.torso.position.y =
+				this.height * 0.5 +
+				Math.abs(Math.sin(this.walkingTime * speed * 2)) * 0.03;
+
+			// Leaning forward slightly while running
+			this.torso.rotation.x = 0.1;
+
+			// Side-to-side swaying
+			this.torso.rotation.z = Math.sin(this.walkingTime * speed) * 0.07;
+		}
+
+		// Head follows body motion but more pronounced
+		if (this.head) {
+			this.head.rotation.x = -0.1; // Looking slightly ahead while running
+			this.head.rotation.z = -Math.sin(this.walkingTime * speed) * 0.05;
 		}
 	}
 

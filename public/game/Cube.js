@@ -1,4 +1,4 @@
-import * as THREE from 'https://cdn.jsdelivr.net/npm/three@0.157.0/build/three.module.js';
+import * as THREE from 'three';
 
 export class Cube {
 	constructor(game, type, x, z) {
@@ -7,8 +7,6 @@ export class Cube {
 		this.size = 1;
 		this.mesh = null;
 		this.destroyed = false;
-		this.rollAngle = 0;
-		this.lastPosition = new THREE.Vector3(x, this.size / 2, z);
 		this.animationPhase = Math.random() * Math.PI * 2; // Random starting phase for animations
 
 		// Create cube mesh
@@ -103,42 +101,9 @@ export class Cube {
 	}
 
 	update(delta) {
-		// Store current position for rolling animation
-		const currentPosition = this.mesh.position.clone();
-
 		// Move cube towards player
 		const speed = this.game.settings.cubeSpeed * delta;
 		this.mesh.position.z -= speed;
-
-		// Add rolling animation
-		const movement = new THREE.Vector3().subVectors(
-			this.lastPosition,
-			currentPosition
-		);
-		const distance = movement.length();
-
-		if (distance > 0.01) {
-			// Determine rotation axis (perpendicular to movement direction)
-			const rotationAxis = new THREE.Vector3(
-				movement.z,
-				0,
-				-movement.x
-			).normalize();
-
-			// Calculate rotation amount
-			const rotationAmount = ((distance / (this.size / 2)) * Math.PI) / 2;
-
-			// Apply rotation
-			this.mesh.rotateOnAxis(rotationAxis, rotationAmount);
-		}
-
-		// Store position for next frame
-		this.lastPosition.copy(this.mesh.position);
-
-		// Add floating/hovering effect
-		const hoverOffset =
-			Math.sin(this.game.clock.elapsedTime * 2 + this.animationPhase) * 0.05;
-		this.mesh.position.y = this.size / 2 + hoverOffset;
 
 		// For advantage cubes, add a pulsing glow effect
 		if (this.type === 'advantage' && this.mesh.material.emissiveIntensity) {
@@ -194,7 +159,7 @@ export class Cube {
 
 		this.destroyed = true;
 
-		// Create more advanced destruction effect
+		// Create simple cube destruction effect
 		const particleCount = 30;
 		const particles = [];
 

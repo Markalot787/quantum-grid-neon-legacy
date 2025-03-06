@@ -1,0 +1,32 @@
+# QUICK FIX FOR WHITE SCREEN ISSUE
+
+1. Open public/game/Game.js, public/game/Player.js, and public/game/Level.js
+2. Change ALL import statements from:
+   ```javascript
+   import * as THREE from 'https://cdn.jsdelivr.net/npm/three@0.157.0/build/three.module.js';
+   ```
+   
+   to:
+   ```javascript
+   import * as THREE from 'three';
+   ```
+
+3. Make sure Cube.js has been updated to use:
+   ```javascript
+   import * as THREE from 'three';
+   ```
+
+4. Restart your server with:
+   ```bash
+   node server.js
+   ```
+
+The white screen issue should now be fixed! If you still have problems:
+
+- Check your browser console (F12) for specific error messages
+- Make sure all your imports are using 'three' instead of 'https://...'
+- Verify that the server.js file includes the MIME type middleware
+
+The important change here is using the import map in index.html, which maps the 'three' import to the CDN URL. This allows all your files to simply import from 'three' instead of needing the full URL.
+
+All animations have been modified as requested - no more rolling cubes or hovering effects. 

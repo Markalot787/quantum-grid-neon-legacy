@@ -47,7 +47,7 @@ export class Game {
 		// Camera movement parameters
 		this.cameraMovement = {
 			angle: 0,
-			radius: 12,
+			radius: 14,
 			height: 12,
 			speed: 0.2,
 			targetLookAt: new THREE.Vector3(0, 0, 8),
@@ -65,10 +65,10 @@ export class Game {
 	init() {
 		// Create scene
 		this.scene = new THREE.Scene();
-		this.scene.background = new THREE.Color(0x000000);
+		this.scene.background = new THREE.Color(0x000011);
 
 		// Add fog for depth
-		this.scene.fog = new THREE.FogExp2(0x000000, 0.03);
+		this.scene.fog = new THREE.FogExp2(0x000011, 0.025);
 
 		// Create camera
 		this.camera = new THREE.PerspectiveCamera(

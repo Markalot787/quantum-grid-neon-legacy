@@ -1,9 +1,12 @@
 import { Game } from './game/Game.js';
 
-// Initialize game
-const game = new Game();
-game.init();
-game.animate();
+// Give a small delay to ensure imports are loaded
+window.addEventListener('DOMContentLoaded', () => {
+	// Initialize game
+	const game = new Game();
+	game.init();
+	game.animate();
 
-// Export game instance for debugging
-window.game = game;
+	// Export game instance for debugging
+	window.game = game;
+});
