@@ -335,4 +335,15 @@ export class Level {
 	getRemainingCubes() {
 		return this.cubes.length;
 	}
+
+	isLevelComplete() {
+		// Check if there are no remaining cubes
+		return this.getRemainingCubes() === 0;
+	}
+
+	isGameOver() {
+		console.log('DEBUG - Level.isGameOver called');
+		// For now, always return false - game is never over unless explicitly ended
+		return false;
+	}
 }

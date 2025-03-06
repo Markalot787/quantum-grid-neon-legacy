@@ -103,11 +103,17 @@ export class Game {
 		// Show start screen
 		this.ui.showStartScreen();
 
-		// Hide loading screen
-		const loadingScreen = document.getElementById('loading-screen');
-		if (loadingScreen) {
-			loadingScreen.style.display = 'none';
-		}
+		// Hide loading screen when everything is ready
+		window.addEventListener('load', () => {
+			console.log('DEBUG - Window load event fired');
+			const loadingScreen = document.getElementById('loading-screen');
+			if (loadingScreen) {
+				console.log('DEBUG - Hiding loading screen');
+				loadingScreen.style.display = 'none';
+			} else {
+				console.log('DEBUG - Loading screen element not found');
+			}
+		});
 
 		// Start animation loop
 		this.animate();
