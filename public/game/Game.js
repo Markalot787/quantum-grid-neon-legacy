@@ -1,9 +1,12 @@
-import * as THREE from 'https://cdn.jsdelivr.net/npm/three@0.157.0/build/three.module.js';
-import { EffectComposer } from 'https://cdn.jsdelivr.net/npm/three@0.157.0/examples/jsm/postprocessing/EffectComposer.js';
-import { RenderPass } from 'https://cdn.jsdelivr.net/npm/three@0.157.0/examples/jsm/postprocessing/RenderPass.js';
-import { UnrealBloomPass } from 'https://cdn.jsdelivr.net/npm/three@0.157.0/examples/jsm/postprocessing/UnrealBloomPass.js';
-import { ShaderPass } from 'https://cdn.jsdelivr.net/npm/three@0.157.0/examples/jsm/postprocessing/ShaderPass.js';
-import { CopyShader } from 'https://cdn.jsdelivr.net/npm/three@0.157.0/examples/jsm/shaders/CopyShader.js';
+// Import all Three.js modules through the central import file
+import {
+	THREE,
+	EffectComposer,
+	RenderPass,
+	UnrealBloomPass,
+	ShaderPass,
+	CopyShader,
+} from '../threeImports.js';
 
 import { Player } from './Player.js';
 import { Level } from './Level.js';

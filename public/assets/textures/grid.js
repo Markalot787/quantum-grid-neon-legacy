@@ -1,3 +1,5 @@
+import { THREE } from '../../threeImports.js';
+
 /**
  * Programmatically generate a grid texture
  */

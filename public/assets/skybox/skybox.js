@@ -1,3 +1,5 @@
+import { THREE } from '../../threeImports.js';
+
 /**
  * Create a gradient skybox texture
  */

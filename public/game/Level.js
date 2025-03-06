@@ -1,4 +1,4 @@
-import * as THREE from 'https://cdn.jsdelivr.net/npm/three@0.157.0/build/three.module.js';
+import { THREE } from '../threeImports.js';
 import { Cube } from './Cube.js';
 import { createGridTexture } from '../assets/textures/grid.js';
 
