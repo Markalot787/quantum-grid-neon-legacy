@@ -22,7 +22,7 @@ export class Game {
 		this.lives = 3;
 		this.maxLives = 3;
 		this.cameraAngle = 0;
-		this.showTutorial = true;
+		this.shouldShowTutorial = true;
 
 		// Animation queue
 		this.animations = [];
@@ -126,8 +126,10 @@ export class Game {
 			// Initialize lives display
 			this.ui.updateLives(this.lives);
 
-			// Show tutorial popup
-			this.showTutorial();
+			// Show tutorial popup if needed
+			if (this.shouldShowTutorial) {
+				this.showTutorial();
+			}
 		} catch (error) {
 			console.error('Error during game initialization:', error);
 			// Show error message on screen
