@@ -317,10 +317,17 @@
 			<button id="tutorial-close">Got it!</button>
 		</div>
 
-		<!-- Load THREE.js post-processing pass libraries (these need Three.js to be loaded first) -->
-		<script src="https://cdn.jsdelivr.net/npm/three@0.157.0/examples/jsm/postprocessing/EffectComposer.js"></script>
-		<script src="https://cdn.jsdelivr.net/npm/three@0.157.0/examples/jsm/postprocessing/RenderPass.js"></script>
-		<script src="https://cdn.jsdelivr.net/npm/three@0.157.0/examples/jsm/postprocessing/UnrealBloomPass.js"></script>
+		<!-- Load THREE.js post-processing libraries -->
+		<script type="module">
+			import { EffectComposer } from 'https://cdn.jsdelivr.net/npm/three@0.157.0/examples/jsm/postprocessing/EffectComposer.js';
+			import { RenderPass } from 'https://cdn.jsdelivr.net/npm/three@0.157.0/examples/jsm/postprocessing/RenderPass.js';
+			import { UnrealBloomPass } from 'https://cdn.jsdelivr.net/npm/three@0.157.0/examples/jsm/postprocessing/UnrealBloomPass.js';
+
+			// Make them globally available
+			window.EffectComposer = EffectComposer;
+			window.RenderPass = RenderPass;
+			window.UnrealBloomPass = UnrealBloomPass;
+		</script>
 
 		<!-- Load Stripe.js -->
 		<script src="https://js.stripe.com/v3/"></script>

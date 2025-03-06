@@ -123,20 +123,22 @@ export class Game {
 
 	setupPostProcessing() {
 		// Create composer and passes
-		this.composer = new THREE.EffectComposer(this.renderer);
+		this.composer = new EffectComposer(this.renderer);
 
 		// Add render pass
-		const renderPass = new THREE.RenderPass(this.scene, this.camera);
+		const renderPass = new RenderPass(this.scene, this.camera);
 		this.composer.addPass(renderPass);
 
-		// Add bloom pass for glow effects
-		const bloomPass = new THREE.UnrealBloomPass(
-			new THREE.Vector2(window.innerWidth, window.innerHeight),
-			this.visualSettings.bloomStrength,
-			this.visualSettings.bloomRadius,
-			this.visualSettings.bloomThreshold
-		);
-		this.composer.addPass(bloomPass);
+		// Add bloom pass for neon glow effect
+		if (this.visualSettings.enableBloom) {
+			const bloomPass = new UnrealBloomPass(
+				new THREE.Vector2(window.innerWidth, window.innerHeight),
+				this.visualSettings.bloomStrength,
+				this.visualSettings.bloomRadius,
+				this.visualSettings.bloomThreshold
+			);
+			this.composer.addPass(bloomPass);
+		}
 	}
 
 	setupLighting() {

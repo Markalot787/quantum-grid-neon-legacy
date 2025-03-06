@@ -9,7 +9,7 @@ export class Cube {
 		this.mesh = null;
 		this.destroyed = false;
 		this.animationPhase = Math.random() * Math.PI * 2; // Random starting phase for animations
-		this.speed = this.game.settings.cubeSpeed * 5; // Store the speed with a multiplier to make it faster
+		this.speed = this.game.settings.cubeSpeed * 10; // Increase speed multiplier from 5 to 10 for faster movement
 
 		// Create cube mesh
 		this.createMesh(x, z);
