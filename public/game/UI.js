@@ -1,178 +1,72 @@
 export class UI {
 	constructor(game) {
-		console.log('DEBUG - UI initialization started');
 		this.game = game;
-
-		// Get UI elements with null checks
 		this.scoreElement = document.getElementById('score');
 		this.levelElement = document.getElementById('level');
 		this.cubesLeftElement = document.getElementById('cubes-left');
+		this.markedTileElement = document.getElementById('markedTile');
+		this.gameOverScreen = document.getElementById('gameOverScreen');
+		this.finalScoreElement = document.getElementById('finalScore');
+		this.restartButton = document.getElementById('restartButton');
 		this.livesElement = document.getElementById('lives');
-		this.startScreen = document.getElementById('start-screen');
-		this.gameOverScreen = document.getElementById('game-over-screen');
-		this.finalScoreElement = document.getElementById('final-score');
-		this.startButton = document.getElementById('start-button');
-		this.restartButton = document.getElementById('restart-button');
-		this.paymentModal = document.getElementById('payment-modal');
-		this.paymentButton = document.getElementById('pay-button');
 
-		// Log which elements were found
-		console.log('DEBUG - UI elements found:', {
-			score: !!this.scoreElement,
-			level: !!this.levelElement,
-			cubesLeft: !!this.cubesLeftElement,
-			lives: !!this.livesElement,
-			startScreen: !!this.startScreen,
-			gameOverScreen: !!this.gameOverScreen,
-			finalScore: !!this.finalScoreElement,
-			startButton: !!this.startButton,
-			restartButton: !!this.restartButton,
-			paymentModal: !!this.paymentModal,
-			paymentButton: !!this.paymentButton,
+		// Create hearts container for lives
+		this.heartsContainer = document.createElement('div');
+		this.heartsContainer.id = 'hearts-container';
+		this.heartsContainer.style.cssText = `
+			position: absolute;
+			top: 10px;
+			right: 10px;
+			display: flex;
+			gap: 5px;
+		`;
+		document.body.appendChild(this.heartsContainer);
+
+		// Add event listeners
+		this.restartButton.addEventListener('click', () => {
+			this.game.restart();
 		});
-
-		// Initialize event listeners
-		this.initEventListeners();
-
-		// Set initial lives display
-		this.updateLives(3);
-
-		console.log('DEBUG - UI initialization complete');
-	}
-
-	initEventListeners() {
-		console.log('DEBUG - Setting up UI event listeners');
-
-		// Add event listeners with null checks
-		if (this.startButton) {
-			this.startButton.addEventListener('click', () => {
-				console.log('DEBUG - Start button clicked');
-				this.hideStartScreen();
-				this.game.startLevel(this.game.currentLevel);
-			});
-		} else {
-			console.warn(
-				'WARNING - Start button not found, game may not start properly'
-			);
-		}
-
-		if (this.restartButton) {
-			this.restartButton.addEventListener('click', () => {
-				console.log('DEBUG - Restart button clicked');
-				this.game.restart();
-			});
-		} else {
-			console.warn(
-				'WARNING - Restart button not found, game cannot be restarted'
-			);
-		}
-
-		console.log('DEBUG - UI event listeners initialized');
 	}
 
 	updateScore(score) {
-		if (this.scoreElement) {
-			this.scoreElement.textContent = `Score: ${score}`;
-		}
+		this.scoreElement.textContent = `Score: ${score}`;
 	}
 
 	updateLevel(level) {
-		if (this.levelElement) {
-			this.levelElement.textContent = `Level: ${level}`;
-		}
+		this.levelElement.textContent = `Level: ${level}`;
 	}
 
 	updateCubesLeft(count) {
-		if (this.cubesLeftElement) {
-			this.cubesLeftElement.textContent = `Cubes: ${count}`;
-		}
-	}
-
-	updateLives(lives) {
-		if (this.livesElement) {
-			// Clear current hearts
-			this.livesElement.innerHTML = '';
-
-			// Add heart icons based on lives count
-			for (let i = 0; i < 3; i++) {
-				const heart = document.createElement('span');
-				if (i < lives) {
-					heart.innerHTML = '❤️';
-					heart.className = 'heart-icon';
-				} else {
-					heart.innerHTML = '❤️';
-					heart.className = 'heart-icon empty';
-				}
-				this.livesElement.appendChild(heart);
-			}
-		}
-	}
-
-	showGameOverScreen(finalScore) {
-		console.log('DEBUG - Showing game over screen with score:', finalScore);
-		if (this.gameOverScreen) {
-			if (this.finalScoreElement) {
-				this.finalScoreElement.textContent = `Your score: ${finalScore}`;
-			}
-			this.gameOverScreen.style.display = 'flex';
-		} else {
-			console.warn('WARNING - Game over screen element not found');
-		}
-	}
-
-	hideGameOverScreen() {
-		console.log('DEBUG - Hiding game over screen');
-		if (this.gameOverScreen) {
-			this.gameOverScreen.style.display = 'none';
-		}
-	}
-
-	showStartScreen() {
-		console.log('DEBUG - Showing start screen');
-		if (this.startScreen) {
-			this.startScreen.style.display = 'flex';
-		} else {
-			console.warn('WARNING - Start screen element not found');
-		}
-	}
-
-	hideStartScreen() {
-		console.log('DEBUG - Hiding start screen');
-		if (this.startScreen) {
-			this.startScreen.style.display = 'none';
-		}
-	}
-
-	showPaymentModal() {
-		console.log('DEBUG - Showing payment modal');
-		if (this.paymentModal) {
-			this.paymentModal.style.display = 'flex';
-		} else {
-			console.warn('WARNING - Payment modal element not found');
-
-			// Fallback: If modal not found, just continue the game
-			this.game.playCount = 0;
-			this.game.startLevel(this.game.currentLevel);
-		}
-	}
-
-	hidePaymentModal() {
-		console.log('DEBUG - Hiding payment modal');
-		if (this.paymentModal) {
-			this.paymentModal.style.display = 'none';
-		}
-	}
-
-	update() {
-		// This method is called every frame by Game.js
-		// Add any UI updates that need to happen every frame here
-		// Currently, we don't need frame-by-frame updates for the UI
-		// but the method must exist to prevent errors
+		this.cubesLeftElement.textContent = `Cubes: ${count}`;
 	}
 
 	updateMarkedTileStatus(status) {
-		// This method would update some UI element to show the marked tile status
-		// Currently, there's no specific element for this in the HTML, so we'll just log it
-		console.log('DEBUG - Marked tile status:', status);
+		this.markedTileElement.textContent = status;
+	}
+
+	updateLives(lives) {
+		// Clear existing hearts
+		this.heartsContainer.innerHTML = '';
+
+		// Add heart icons
+		for (let i = 0; i < this.game.maxLives; i++) {
+			const heart = document.createElement('div');
+			heart.style.cssText = `
+				width: 20px;
+				height: 20px;
+				background-color: ${i < lives ? '#ff0000' : '#333333'};
+				clip-path: path('M12 21.593c-5.63-5.539-11-10.297-11-14.402 0-3.791 3.068-5.191 5.281-5.191 1.312 0 4.151.501 5.719 4.457 1.59-3.968 4.464-4.447 5.726-4.447 2.54 0 5.274 1.621 5.274 5.181 0 4.069-5.136 8.625-11 14.402m5.726-20.583c-2.203 0-4.446 1.042-5.726 3.238-1.285-2.206-3.522-3.248-5.719-3.248-3.183 0-6.281 2.187-6.281 6.191 0 4.661 5.571 9.429 12 15.809 6.43-6.38 12-11.148 12-15.809 0-4.011-3.095-6.181-6.274-6.181');
+			`;
+			this.heartsContainer.appendChild(heart);
+		}
+	}
+
+	showGameOver(score) {
+		this.finalScoreElement.textContent = `Your score: ${score}`;
+		this.gameOverScreen.style.display = 'block';
+	}
+
+	hideGameOver() {
+		this.gameOverScreen.style.display = 'none';
 	}
 }

@@ -1,64 +1,24 @@
 export class PaymentModal {
 	constructor(game) {
-		console.log('DEBUG - PaymentModal initialization started');
 		this.game = game;
 		this.modal = document.getElementById('payment-modal');
-
-		// Get button elements with null checks
-		this.closeButton = document.getElementById('cancel-payment');
+		this.closeButton = document.querySelector('.close');
 		this.payButton = document.getElementById('pay-button');
 
-		console.log('DEBUG - PaymentModal elements found:', {
-			modal: !!this.modal,
-			closeButton: !!this.closeButton,
-			payButton: !!this.payButton,
-		});
+		// Add event listeners
+		this.closeButton.addEventListener('click', () => this.hide());
+		this.payButton.addEventListener('click', () => this.processPayment());
 
-		// Add event listeners with null checks
-		if (this.closeButton) {
-			this.closeButton.addEventListener('click', () => {
-				console.log('DEBUG - Cancel payment button clicked');
-				this.hide();
-				// Reset play count to allow more free play
-				this.game.playCount = 0;
-				// Continue to next level
-				this.game.startLevel(this.game.currentLevel);
-			});
-		} else {
-			console.warn('WARNING - Cancel payment button not found');
-		}
-
-		if (this.payButton) {
-			this.payButton.addEventListener('click', () => {
-				console.log('DEBUG - Pay button clicked');
-				this.processPayment();
-			});
-		} else {
-			console.warn('WARNING - Pay button not found');
-		}
-
-		// Load Stripe script for payment integration
+		// Load Stripe.js
 		this.loadStripeScript();
-
-		console.log('DEBUG - PaymentModal initialization complete');
 	}
 
 	show() {
-		console.log('DEBUG - Showing payment modal');
-		if (this.modal) {
-			this.modal.style.display = 'flex';
-		} else {
-			console.warn('WARNING - Payment modal element not found');
-			// Fallback: If modal not found, just continue the game
-			this.fallbackPayment();
-		}
+		this.modal.style.display = 'block';
 	}
 
 	hide() {
-		console.log('DEBUG - Hiding payment modal');
-		if (this.modal) {
-			this.modal.style.display = 'none';
-		}
+		this.modal.style.display = 'none';
 	}
 
 	loadStripeScript() {
@@ -68,16 +28,42 @@ export class PaymentModal {
 			script.src = 'https://js.stripe.com/v3/';
 			script.async = true;
 			document.body.appendChild(script);
-			console.log('DEBUG - Stripe script loaded');
 		}
 	}
 
 	async processPayment() {
-		console.log('DEBUG - Processing payment');
 		try {
-			// For demo purposes, we'll use fallback payment
-			// In a real implementation, we would integrate with Stripe
-			this.fallbackPayment();
+			// Check if Stripe is loaded
+			if (window.Stripe) {
+				// Create a Stripe instance
+				const stripe = Stripe('pk_test_TYooMQauvdEDq54NiTphI7jx');
+
+				// Call backend to create checkout session
+				const response = await fetch('/create-checkout-session', {
+					method: 'POST',
+					headers: {
+						'Content-Type': 'application/json',
+					},
+					body: JSON.stringify({
+						product: 'Quantum Grid: Neon Legacy Full Version',
+					}),
+				});
+
+				const session = await response.json();
+
+				// Redirect to checkout
+				const result = await stripe.redirectToCheckout({
+					sessionId: session.id,
+				});
+
+				if (result.error) {
+					console.error(result.error.message);
+					this.fallbackPayment();
+				}
+			} else {
+				// If Stripe isn't loaded, use fallback
+				this.fallbackPayment();
+			}
 		} catch (error) {
 			console.error('Payment error:', error);
 			this.fallbackPayment();
@@ -85,8 +71,7 @@ export class PaymentModal {
 	}
 
 	fallbackPayment() {
-		console.log('DEBUG - Using fallback payment process');
-		// Mock payment processing
+		// Mock payment processing as fallback
 		alert('Thank you for your purchase! Enjoy the full game!');
 
 		// Hide modal

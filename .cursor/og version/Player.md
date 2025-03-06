@@ -1,11 +1,9 @@
 import * as THREE from 'https://cdn.jsdelivr.net/npm/three@0.157.0/build/three.module.js';
-import { SimpleHumanoid } from '../assets/models/SimpleHumanoid.js';
 
 export class Player {
 	constructor(game) {
 		this.game = game;
 		this.mesh = null;
-		this.humanoid = null;
 		this.position = {
 			x: 0,
 			z: 0,
@@ -14,21 +12,15 @@ export class Player {
 		this.moveSpeed = 0.2;
 		this.lastMoveTime = 0;
 		this.moveCooldown = 150; // ms
-		this.lastDirection = null;
 
 		this.init();
 	}
 
 	init() {
-		// Create humanoid character
-		this.humanoid = new SimpleHumanoid({
-			color: 0xffaa00, // Amber/yellow color
-			height: 0.6,
-			width: 0.2,
-			animationSpeed: 1.0,
-		});
-
-		this.mesh = this.humanoid.getModel();
+		// Create player mesh
+		const geometry = new THREE.CapsuleGeometry(this.size / 2, this.size, 2, 8);
+		const material = new THREE.MeshLambertMaterial({ color: 0xffff00 });
+		this.mesh = new THREE.Mesh(geometry, material);
 
 		// Position player
 		this.resetPosition();
@@ -50,20 +42,11 @@ export class Player {
 
 	updateMeshPosition() {
 		if (this.mesh) {
-			const meshPosition = new THREE.Vector3(
+			this.mesh.position.set(
 				this.position.x,
 				this.size * 0.7, // Half height + small gap
 				this.position.z
 			);
-
-			this.humanoid.setPosition(
-				this.position.x,
-				this.size * 0.7, // Half height + small gap
-				this.position.z
-			);
-
-			// Update humanoid animation
-			this.humanoid.update(meshPosition);
 		}
 	}
 
@@ -74,7 +57,6 @@ export class Player {
 			return;
 		}
 		this.lastMoveTime = now;
-		this.lastDirection = direction;
 
 		// Get current position
 		const { x, z } = this.position;
@@ -121,33 +103,6 @@ export class Player {
 
 		// Update mesh position
 		this.updateMeshPosition();
-
-		// Rotate player based on direction
-		if (this.mesh) {
-			switch (direction) {
-				case 'forward':
-					this.mesh.rotation.y = 0;
-					break;
-				case 'backward':
-					this.mesh.rotation.y = Math.PI;
-					break;
-				case 'left':
-					this.mesh.rotation.y = -Math.PI / 2;
-					break;
-				case 'right':
-					this.mesh.rotation.y = Math.PI / 2;
-					break;
-			}
-		}
-	}
-
-	update(delta) {
-		// Update humanoid animation
-		if (this.humanoid) {
-			this.humanoid.update(
-				new THREE.Vector3(this.position.x, this.size * 0.7, this.position.z)
-			);
-		}
 	}
 
 	getPosition() {

@@ -1,6 +1,5 @@
 import * as THREE from 'https://cdn.jsdelivr.net/npm/three@0.157.0/build/three.module.js';
 import { Cube } from './Cube.js';
-import { createGridTexture } from '../assets/textures/grid_texture.js';
 
 export class Level {
 	constructor(game) {
@@ -15,8 +14,6 @@ export class Level {
 		this.platformMesh = null;
 		this.platformWidth = 0;
 		this.platformLength = 0;
-		this.gridTexture = null;
-		this.destructionEffects = [];
 
 		// Level state
 		this.levelComplete = false;
@@ -31,64 +28,26 @@ export class Level {
 		this.platformWidth = width;
 		this.platformLength = length;
 
-		// Create grid texture (IQ style)
-		const gridCanvas = createGridTexture('#333333', '#555555', 512);
-		this.gridTexture = new THREE.CanvasTexture(gridCanvas);
-		this.gridTexture.wrapS = THREE.RepeatWrapping;
-		this.gridTexture.wrapT = THREE.RepeatWrapping;
-		this.gridTexture.repeat.set(width, length);
+		// Create platform geometry
+		const geometry = new THREE.BoxGeometry(width, 0.5, length);
+		const material = new THREE.MeshLambertMaterial({ color: 0x444444 });
 
-		// Create individual platform tiles for better appearance
-		const tileGroup = new THREE.Group();
+		// Create mesh
+		this.platformMesh = new THREE.Mesh(geometry, material);
+		this.platformMesh.position.set(0, -0.25, length / 2 - 0.5);
+		this.platformMesh.receiveShadow = true;
+
+		// Add to scene
+		this.game.scene.add(this.platformMesh);
+
+		// Create platform grid for gameplay
+		this.platform = [];
 
 		for (let x = -Math.floor(width / 2); x <= Math.floor(width / 2); x++) {
 			for (let z = 0; z < length; z++) {
-				// Create tile geometry and material
-				const tileGeometry = new THREE.BoxGeometry(0.95, 0.2, 0.95);
-				const tileMaterial = new THREE.MeshStandardMaterial({
-					map: this.gridTexture,
-					roughness: 0.7,
-					metalness: 0.2,
-					color: (x + z) % 2 === 0 ? 0x444444 : 0x555555, // Checkerboard pattern
-				});
-
-				// Create tile mesh
-				const tileMesh = new THREE.Mesh(tileGeometry, tileMaterial);
-				tileMesh.position.set(x, -0.1, z);
-				tileMesh.receiveShadow = true;
-				tileMesh.userData = { x, z, exists: true };
-
-				// Add to group
-				tileGroup.add(tileMesh);
-
-				// Track platform tiles
-				this.platform.push({ x, z, exists: true, mesh: tileMesh });
+				this.platform.push({ x, z, exists: true });
 			}
 		}
-
-		// Create edge material for a more defined look
-		const edgeMaterial = new THREE.MeshStandardMaterial({
-			color: 0x333333,
-			roughness: 0.8,
-			metalness: 0.3,
-		});
-
-		// Add bottom platform for cohesiveness
-		const platformBase = new THREE.Mesh(
-			new THREE.BoxGeometry(width + 0.1, 0.1, length + 0.1),
-			edgeMaterial
-		);
-		platformBase.position.set(0, -0.2, length / 2 - 0.5);
-		platformBase.receiveShadow = true;
-
-		// Add to scene
-		this.platformMesh = tileGroup;
-		this.game.scene.add(tileGroup);
-		this.game.scene.add(platformBase);
-
-		// Add subtle ambient light to better see the platform
-		const ambientLight = new THREE.AmbientLight(0x404040, 0.5);
-		this.game.scene.add(ambientLight);
 	}
 
 	generateLevel(levelNumber) {
@@ -206,56 +165,14 @@ export class Level {
 	}
 
 	removeCube(cube) {
-		// Remove cube from game arrays
-		this.cubes = this.cubes.filter((c) => c !== cube);
-
-		// Add destruction effect
-		this.createDestructionEffect(cube.mesh.position.clone());
-
 		// Remove from scene
 		this.game.scene.remove(cube.mesh);
-	}
 
-	createDestructionEffect(position) {
-		// Create a white flash effect
-		const flashGeometry = new THREE.SphereGeometry(0.5, 16, 16);
-		const flashMaterial = new THREE.MeshBasicMaterial({
-			color: 0xffffff,
-			transparent: true,
-			opacity: 1,
-		});
-
-		const flash = new THREE.Mesh(flashGeometry, flashMaterial);
-		flash.position.copy(position);
-		this.game.scene.add(flash);
-
-		// Animate the flash effect - grow and fade out
-		const startScale = 0.5;
-		const endScale = 2;
-		const duration = 0.5; // seconds
-
-		let elapsedTime = 0;
-		const updateFlash = (delta) => {
-			elapsedTime += delta;
-			const progress = Math.min(elapsedTime / duration, 1);
-
-			// Scale up
-			const scale = startScale + (endScale - startScale) * progress;
-			flash.scale.set(scale, scale, scale);
-
-			// Fade out
-			flash.material.opacity = 1 - progress;
-
-			if (progress >= 1) {
-				// Animation complete, remove the effect
-				this.game.scene.remove(flash);
-				return true; // signal completion
-			}
-			return false;
-		};
-
-		// Add to animation loop
-		this.game.addAnimation(updateFlash);
+		// Remove from array
+		const index = this.cubes.indexOf(cube);
+		if (index !== -1) {
+			this.cubes.splice(index, 1);
+		}
 	}
 
 	clearLevel() {
@@ -287,50 +204,11 @@ export class Level {
 			}
 		}
 
-		// Update platform data and visuals
+		// Update platform data
 		for (let i = this.platform.length - 1; i >= 0; i--) {
 			const tile = this.platform[i];
 			if (tile.z === row) {
 				tile.exists = false;
-
-				// Visual effect for tile destruction
-				if (tile.mesh) {
-					const tileMesh = tile.mesh;
-
-					// Add falling animation
-					const startY = tileMesh.position.y;
-					const animation = {
-						mesh: tileMesh,
-						time: 0,
-						duration: 1.0,
-						update: (delta) => {
-							animation.time += delta;
-							const progress = Math.min(
-								animation.time / animation.duration,
-								1.0
-							);
-
-							// Fall and fade
-							tileMesh.position.y = startY - 10 * Math.pow(progress, 2);
-							tileMesh.rotation.x += delta * 5;
-							tileMesh.rotation.z += delta * 3;
-
-							if (tileMesh.material.opacity) {
-								tileMesh.material.transparent = true;
-								tileMesh.material.opacity = 1 - progress;
-							}
-
-							// Remove when animation complete
-							if (progress >= 1.0) {
-								this.platformMesh.remove(tileMesh);
-								return true; // Animation complete
-							}
-							return false;
-						},
-					};
-
-					this.destructionEffects.push(animation);
-				}
 			}
 		}
 
@@ -339,6 +217,10 @@ export class Level {
 		if (Math.round(playerPos.z) === row) {
 			this.gameOver = true;
 		}
+
+		// Update platform mesh (visual)
+		// For simplicity in the MVP, we just change the platform color
+		this.platformMesh.material.color.set(0x333333);
 	}
 
 	isPlatformAt(x, z) {

@@ -10,6 +10,4 @@ have a little pop up explain the rules and keybaord
 
 when you pass a level it adds to a line of cubes to the platform alongating it
 
-lets make the blocks rotate on the ground as it goes towards the player rolling side to side and it can crush player
-
 add a angled camara to the game that moves side to side fluidly gracefully
