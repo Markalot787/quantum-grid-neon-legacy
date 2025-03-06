@@ -1,7 +1,8 @@
-import * as THREE from 'https://cdn.jsdelivr.net/npm/three@0.157.0/build/three.module.js';
-import { EffectComposer } from 'https://cdn.jsdelivr.net/npm/three@0.157.0/examples/jsm/postprocessing/EffectComposer.js';
-import { RenderPass } from 'https://cdn.jsdelivr.net/npm/three@0.157.0/examples/jsm/postprocessing/RenderPass.js';
-import { UnrealBloomPass } from 'https://cdn.jsdelivr.net/npm/three@0.157.0/examples/jsm/postprocessing/UnrealBloomPass.js';
+// Let THREE be globally loaded
+// import * as THREE from 'three';
+// import { EffectComposer } from 'https://cdn.jsdelivr.net/npm/three@0.157.0/examples/jsm/postprocessing/EffectComposer.js';
+// import { RenderPass } from 'https://cdn.jsdelivr.net/npm/three@0.157.0/examples/jsm/postprocessing/RenderPass.js';
+// import { UnrealBloomPass } from 'https://cdn.jsdelivr.net/npm/three@0.157.0/examples/jsm/postprocessing/UnrealBloomPass.js';
 import { Player } from './Player.js';
 import { Level } from './Level.js';
 import { UI } from './UI.js';
@@ -26,7 +27,10 @@ export class Game {
 		this.lives = 3;
 		this.maxLives = 3;
 		this.cameraAngle = 0;
-		this.showTutorial = true;
+
+		// Game states
+		this.isLoading = true;
+		this.showStartScreen = true;
 
 		// Animation queue
 		this.animations = [];
@@ -47,7 +51,7 @@ export class Game {
 		// Camera movement parameters
 		this.cameraMovement = {
 			angle: 0,
-			radius: 14,
+			radius: 14, // Increased from 12 for a more pulled back view
 			height: 12,
 			speed: 0.2,
 			targetLookAt: new THREE.Vector3(0, 0, 8),
@@ -60,6 +64,8 @@ export class Game {
 			bloomThreshold: 0.6,
 			enableBloom: true,
 		};
+
+		console.log('Game initialized with settings:', this.settings);
 	}
 
 	init() {
@@ -117,14 +123,14 @@ export class Game {
 
 	setupPostProcessing() {
 		// Create composer and passes
-		this.composer = new EffectComposer(this.renderer);
+		this.composer = new THREE.EffectComposer(this.renderer);
 
 		// Add render pass
-		const renderPass = new RenderPass(this.scene, this.camera);
+		const renderPass = new THREE.RenderPass(this.scene, this.camera);
 		this.composer.addPass(renderPass);
 
 		// Add bloom pass for glow effects
-		const bloomPass = new UnrealBloomPass(
+		const bloomPass = new THREE.UnrealBloomPass(
 			new THREE.Vector2(window.innerWidth, window.innerHeight),
 			this.visualSettings.bloomStrength,
 			this.visualSettings.bloomRadius,

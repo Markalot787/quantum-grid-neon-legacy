@@ -1,4 +1,5 @@
-import * as THREE from 'three';
+// Let THREE be globally loaded
+// import * as THREE from 'three';
 
 export class Cube {
 	constructor(game, type, x, z) {
@@ -8,7 +9,7 @@ export class Cube {
 		this.mesh = null;
 		this.destroyed = false;
 		this.animationPhase = Math.random() * Math.PI * 2; // Random starting phase for animations
-		this.speed = this.game.settings.cubeSpeed; // Store the speed
+		this.speed = this.game.settings.cubeSpeed * 5; // Store the speed with a multiplier to make it faster
 
 		// Create cube mesh
 		this.createMesh(x, z);
@@ -113,14 +114,17 @@ export class Cube {
 		const moveDistance = this.speed * delta;
 		this.mesh.position.z -= moveDistance;
 
-		// Debug log every 2 seconds
-		if (Math.random() < 0.01) {
+		// Debug log to track cube movement
+		if (Math.random() < 0.002) {
 			console.log(
 				`Cube at (${this.mesh.position.x.toFixed(
 					2
-				)}, ${this.mesh.position.z.toFixed(2)}) moving with speed ${
-					this.speed
-				}, delta: ${delta}`
+				)}, ${this.mesh.position.z.toFixed(
+					2
+				)}) moving with distance ${moveDistance} (delta: ${delta})`
+			);
+			console.log(
+				`  Original speed: ${this.game.settings.cubeSpeed}, Applied speed: ${this.speed}`
 			);
 		}
 
@@ -286,10 +290,6 @@ export class Cube {
 		this.mesh = null;
 
 		// Debug log
-		console.log(
-			`Destroyed cube at position (${
-				this.mesh ? this.mesh.position.x : 'unknown'
-			}, ${this.mesh ? this.mesh.position.z : 'unknown'})`
-		);
+		console.log(`Destroyed a ${this.type} cube`);
 	}
 }

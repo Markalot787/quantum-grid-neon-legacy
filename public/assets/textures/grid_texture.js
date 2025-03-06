@@ -54,5 +54,6 @@ export function createGridTexture(
 		ctx.stroke();
 	}
 
+	console.log('Grid texture created');
 	return canvas;
 }

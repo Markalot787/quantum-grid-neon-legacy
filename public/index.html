@@ -5,6 +5,8 @@
 		<meta name="viewport" content="width=device-width, initial-scale=1.0" />
 		<title>Quantum Grid: Neon Legacy</title>
 		<link rel="icon" href="/favicon.ico" />
+		<!-- Load Three.js directly -->
+		<script src="https://cdn.jsdelivr.net/npm/three@0.157.0/build/three.min.js"></script>
 		<style>
 			body {
 				margin: 0;
@@ -315,14 +317,10 @@
 			<button id="tutorial-close">Got it!</button>
 		</div>
 
-		<!-- Load Three.js from CDN -->
-		<script type="importmap">
-			{
-				"imports": {
-					"three": "https://cdn.jsdelivr.net/npm/three@0.157.0/build/three.module.js"
-				}
-			}
-		</script>
+		<!-- Load THREE.js post-processing pass libraries (these need Three.js to be loaded first) -->
+		<script src="https://cdn.jsdelivr.net/npm/three@0.157.0/examples/jsm/postprocessing/EffectComposer.js"></script>
+		<script src="https://cdn.jsdelivr.net/npm/three@0.157.0/examples/jsm/postprocessing/RenderPass.js"></script>
+		<script src="https://cdn.jsdelivr.net/npm/three@0.157.0/examples/jsm/postprocessing/UnrealBloomPass.js"></script>
 
 		<!-- Load Stripe.js -->
 		<script src="https://js.stripe.com/v3/"></script>

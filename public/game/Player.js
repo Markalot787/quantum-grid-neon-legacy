@@ -1,4 +1,5 @@
-import * as THREE from 'https://cdn.jsdelivr.net/npm/three@0.157.0/build/three.module.js';
+// Let THREE be globally loaded
+// import * as THREE from 'three';
 import { SimpleHumanoid } from '../assets/models/SimpleHumanoid.js';
 
 export class Player {
@@ -35,6 +36,8 @@ export class Player {
 
 		// Add to scene
 		this.game.scene.add(this.mesh);
+
+		console.log('Player initialized');
 	}
 
 	resetPosition() {
@@ -46,6 +49,10 @@ export class Player {
 		this.position.z = 1; // Near the start
 
 		this.updateMeshPosition();
+
+		console.log(
+			`Player reset to position (${this.position.x}, ${this.position.z})`
+		);
 	}
 
 	updateMeshPosition() {
@@ -139,6 +146,10 @@ export class Player {
 					break;
 			}
 		}
+
+		console.log(
+			`Player moved to position (${this.position.x}, ${this.position.z})`
+		);
 	}
 
 	update(delta) {

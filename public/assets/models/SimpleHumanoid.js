@@ -1,4 +1,5 @@
-import * as THREE from 'https://cdn.jsdelivr.net/npm/three@0.157.0/build/three.module.js';
+// Let THREE be globally loaded
+// import * as THREE from 'three';
 
 /**
  * Creates a simple humanoid figure with basic animations
@@ -36,6 +37,8 @@ export class SimpleHumanoid {
 		// Animation properties
 		this.direction = new THREE.Vector3(0, 0, 1); // Forward
 		this.lastPosition = new THREE.Vector3();
+
+		console.log('SimpleHumanoid created');
 	}
 
 	createModel() {

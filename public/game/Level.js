@@ -1,4 +1,5 @@
-import * as THREE from 'https://cdn.jsdelivr.net/npm/three@0.157.0/build/three.module.js';
+// Let THREE be globally loaded
+// import * as THREE from 'three';
 import { Cube } from './Cube.js';
 import { createGridTexture } from '../assets/textures/grid_texture.js';
 
