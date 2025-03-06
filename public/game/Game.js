@@ -56,7 +56,30 @@ export class Game {
 
 			// Create scene
 			this.scene = new THREE.Scene();
-			this.scene.background = new THREE.Color(0x000033); // Dark blue background
+
+			// Create a gradient background for cyberpunk feel
+			const bgTexture = new THREE.TextureLoader().load(
+				'assets/textures/cyberpunk_grid_bg.jpg',
+				// Success callback
+				() => console.log('Background texture loaded successfully'),
+				// Progress callback
+				undefined,
+				// Error callback
+				(err) => {
+					console.warn(
+						'Failed to load background texture, using color fallback:',
+						err
+					);
+					this.scene.background = new THREE.Color(0x000033); // Dark blue background as fallback
+				}
+			);
+
+			// Set background texture if loaded successfully
+			if (bgTexture) {
+				this.scene.background = bgTexture;
+			} else {
+				this.scene.background = new THREE.Color(0x000033); // Dark blue background as fallback
+			}
 
 			// Create camera
 			this.camera = new THREE.PerspectiveCamera(
@@ -75,18 +98,41 @@ export class Game {
 			this.renderer = new THREE.WebGLRenderer({ antialias: true });
 			this.renderer.setSize(window.innerWidth, window.innerHeight);
 			this.renderer.shadowMap.enabled = true;
+			this.renderer.shadowMap.type = THREE.PCFSoftShadowMap; // Softer shadows
 			document.body.appendChild(this.renderer.domElement);
 			console.log('Renderer created');
 
-			// Add lights
-			const ambientLight = new THREE.AmbientLight(0x404040, 1);
+			// Enhanced lighting for cyberpunk feel
+			// Ambient light - slightly blue tint for cyberpunk feel
+			const ambientLight = new THREE.AmbientLight(0x101025, 0.8);
 			this.scene.add(ambientLight);
 
+			// Main directional light
 			const directionalLight = new THREE.DirectionalLight(0xffffff, 1);
 			directionalLight.position.set(5, 10, 5);
 			directionalLight.castShadow = true;
+			// Improve shadow quality
+			directionalLight.shadow.mapSize.width = 1024;
+			directionalLight.shadow.mapSize.height = 1024;
+			directionalLight.shadow.camera.near = 0.5;
+			directionalLight.shadow.camera.far = 50;
 			this.scene.add(directionalLight);
-			console.log('Lights added to scene');
+
+			// Add neon accent lights
+			// Purple/pink neon light
+			const neonLight1 = new THREE.PointLight(0xff00ff, 1, 20);
+			neonLight1.position.set(-5, 5, 10);
+			this.scene.add(neonLight1);
+
+			// Cyan neon light
+			const neonLight2 = new THREE.PointLight(0x00ffff, 1, 20);
+			neonLight2.position.set(5, 5, 15);
+			this.scene.add(neonLight2);
+
+			// Add subtle fog for depth
+			this.scene.fog = new THREE.FogExp2(0x000033, 0.02);
+
+			console.log('Enhanced lighting added to scene');
 
 			// Set up post-processing effects
 			this.setupPostProcessing();
@@ -719,19 +765,101 @@ export class Game {
 	setupPostProcessing() {
 		try {
 			console.log('Setting up post-processing effects...');
-			// Basic implementation that doesn't require additional libraries
-			// We can expand this later if needed
 
-			// Create a simple post-processing effect using CSS filters for the whole page
-			this.renderer.domElement.style.filter = 'brightness(1.1) contrast(1.05)';
+			// Import required post-processing modules
+			import(
+				'https://cdn.jsdelivr.net/npm/three@0.157.0/examples/jsm/postprocessing/EffectComposer.js'
+			)
+				.then(({ EffectComposer }) => {
+					import(
+						'https://cdn.jsdelivr.net/npm/three@0.157.0/examples/jsm/postprocessing/RenderPass.js'
+					)
+						.then(({ RenderPass }) => {
+							import(
+								'https://cdn.jsdelivr.net/npm/three@0.157.0/examples/jsm/postprocessing/UnrealBloomPass.js'
+							)
+								.then(({ UnrealBloomPass }) => {
+									// Create effect composer
+									this.composer = new EffectComposer(this.renderer);
 
-			console.log('Post-processing setup complete');
+									// Add render pass
+									const renderPass = new RenderPass(this.scene, this.camera);
+									this.composer.addPass(renderPass);
+
+									// Add bloom pass for neon glow effect
+									const bloomPass = new UnrealBloomPass(
+										new THREE.Vector2(window.innerWidth, window.innerHeight),
+										1.5, // Strength
+										0.4, // Radius
+										0.85 // Threshold
+									);
+									bloomPass.threshold = 0.3;
+									bloomPass.strength = 1.2;
+									bloomPass.radius = 0.7;
+									this.composer.addPass(bloomPass);
+
+									console.log('Advanced post-processing setup complete');
+
+									// Update the animate method to use the composer
+									const originalAnimate = this.animate.bind(this);
+									this.animate = () => {
+										requestAnimationFrame(this.animate.bind(this));
+
+										const delta = this.clock.getDelta();
+
+										if (!this.paused) {
+											this.update(delta);
+										}
+
+										// Use composer instead of renderer
+										if (this.composer) {
+											this.composer.render();
+										} else {
+											this.renderer.render(this.scene, this.camera);
+										}
+									};
+
+									// Start animation loop again
+									this.animate();
+								})
+								.catch((error) => {
+									console.warn(
+										'Failed to load UnrealBloomPass, falling back to basic rendering:',
+										error
+									);
+									// Fallback to basic CSS filter
+									this.renderer.domElement.style.filter =
+										'brightness(1.1) contrast(1.05) saturate(1.2)';
+								});
+						})
+						.catch((error) => {
+							console.warn(
+								'Failed to load RenderPass, falling back to basic rendering:',
+								error
+							);
+							// Fallback to basic CSS filter
+							this.renderer.domElement.style.filter =
+								'brightness(1.1) contrast(1.05) saturate(1.2)';
+						});
+				})
+				.catch((error) => {
+					console.warn(
+						'Failed to load EffectComposer, falling back to basic rendering:',
+						error
+					);
+					// Fallback to basic CSS filter
+					this.renderer.domElement.style.filter =
+						'brightness(1.1) contrast(1.05) saturate(1.2)';
+				});
 		} catch (error) {
 			console.warn(
 				'Post-processing setup failed, continuing without effects:',
 				error
 			);
 			// Don't throw - this is non-critical, we can continue without post-processing
+			// Fallback to basic CSS filter
+			this.renderer.domElement.style.filter =
+				'brightness(1.1) contrast(1.05) saturate(1.2)';
 		}
 	}
 }

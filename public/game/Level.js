@@ -21,32 +21,115 @@ export class Level {
 	}
 
 	createPlatform() {
-		const width = this.game.settings.stageWidth;
-		const length = this.game.settings.stageLength;
+		try {
+			console.log('Creating platform...');
 
-		// Store dimensions
-		this.platformWidth = width;
-		this.platformLength = length;
+			// Create a texture loader
+			const textureLoader = new THREE.TextureLoader();
 
-		// Create platform geometry
-		const geometry = new THREE.BoxGeometry(width, 0.5, length);
-		const material = new THREE.MeshLambertMaterial({ color: 0x444444 });
+			// Load grid texture with error handling
+			const gridTexture = textureLoader.load(
+				'assets/textures/grid_texture.png',
+				// Success callback
+				() => console.log('Grid texture loaded successfully'),
+				// Progress callback
+				undefined,
+				// Error callback
+				(err) => console.warn('Failed to load grid texture:', err)
+			);
 
-		// Create mesh
-		this.platformMesh = new THREE.Mesh(geometry, material);
-		this.platformMesh.position.set(0, -0.25, length / 2 - 0.5);
-		this.platformMesh.receiveShadow = true;
-
-		// Add to scene
-		this.game.scene.add(this.platformMesh);
-
-		// Create platform grid for gameplay
-		this.platform = [];
-
-		for (let x = -Math.floor(width / 2); x <= Math.floor(width / 2); x++) {
-			for (let z = 0; z < length; z++) {
-				this.platform.push({ x, z, exists: true });
+			// Set texture properties
+			if (gridTexture) {
+				gridTexture.wrapS = THREE.RepeatWrapping;
+				gridTexture.wrapT = THREE.RepeatWrapping;
+				gridTexture.repeat.set(
+					this.game.settings.stageWidth,
+					this.game.settings.stageLength
+				);
 			}
+
+			// Create platform geometry
+			const geometry = new THREE.BoxGeometry(
+				this.game.settings.stageWidth,
+				0.5,
+				this.game.settings.stageLength
+			);
+
+			// Create cyberpunk-style material with neon grid
+			const material = new THREE.MeshStandardMaterial({
+				color: 0x0a0a2a, // Dark blue base
+				map: gridTexture,
+				roughness: 0.3,
+				metalness: 0.7,
+				emissive: 0x00aaff, // Cyan glow
+				emissiveIntensity: 0.2,
+				emissiveMap: gridTexture,
+			});
+
+			// Create platform mesh
+			this.platform = new THREE.Mesh(geometry, material);
+			this.platform.position.set(
+				this.game.settings.stageWidth / 2 - 0.5,
+				-0.25,
+				this.game.settings.stageLength / 2 - 0.5
+			);
+			this.platform.receiveShadow = true;
+			this.game.scene.add(this.platform);
+
+			// Add glowing edges to the platform
+			this.addPlatformEdges();
+
+			console.log('Platform created successfully');
+		} catch (error) {
+			console.error('Error creating platform:', error);
+		}
+	}
+
+	// New method to add glowing edges to the platform
+	addPlatformEdges() {
+		try {
+			const width = this.game.settings.stageWidth;
+			const length = this.game.settings.stageLength;
+
+			// Create edge geometry
+			const edgeGeometry = new THREE.BoxGeometry(0.1, 0.1, length);
+			const edgeMaterial = new THREE.MeshStandardMaterial({
+				color: 0x00ffff, // Cyan color
+				emissive: 0x00ffff,
+				emissiveIntensity: 1,
+				roughness: 0.3,
+				metalness: 0.8,
+			});
+
+			// Left edge
+			const leftEdge = new THREE.Mesh(edgeGeometry, edgeMaterial);
+			leftEdge.position.set(0, 0, length / 2 - 0.5);
+			this.game.scene.add(leftEdge);
+
+			// Right edge
+			const rightEdge = new THREE.Mesh(edgeGeometry, edgeMaterial);
+			rightEdge.position.set(width - 1, 0, length / 2 - 0.5);
+			this.game.scene.add(rightEdge);
+
+			// Front edge (rotated)
+			const frontEdgeGeometry = new THREE.BoxGeometry(0.1, 0.1, width);
+			const frontEdge = new THREE.Mesh(frontEdgeGeometry, edgeMaterial);
+			frontEdge.position.set(width / 2 - 0.5, 0, 0);
+			frontEdge.rotation.y = Math.PI / 2;
+			this.game.scene.add(frontEdge);
+
+			// Back edge (rotated)
+			const backEdge = new THREE.Mesh(frontEdgeGeometry, edgeMaterial);
+			backEdge.position.set(width / 2 - 0.5, 0, length - 1);
+			backEdge.rotation.y = Math.PI / 2;
+			this.game.scene.add(backEdge);
+
+			// Store edges for later reference
+			this.platformEdges = [leftEdge, rightEdge, frontEdge, backEdge];
+
+			console.log('Platform edges added');
+		} catch (error) {
+			console.error('Error adding platform edges:', error);
 		}
 	}
 
