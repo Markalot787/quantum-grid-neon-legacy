@@ -220,6 +220,7 @@
 				align-items: center;
 				flex-direction: column;
 				z-index: 9999;
+				transition: opacity 1s ease;
 			}
 			.loading-progress {
 				width: 300px;
@@ -309,6 +310,31 @@
 				<button id="restartButton">Play Again</button>
 			</div>
 		</div>
+
+		<!-- Error handler for debugging -->
+		<script>
+			window.addEventListener('error', function (event) {
+				console.error(
+					'ERROR:',
+					event.message,
+					'at',
+					event.filename,
+					'line',
+					event.lineno
+				);
+
+				const loadingText = document.getElementById('loading-text');
+				if (loadingText) {
+					loadingText.textContent = 'Error: ' + event.message;
+					loadingText.style.color = '#ff0000';
+				}
+
+				return false;
+			});
+
+			// Initialize loading screen
+			document.getElementById('loading-bar').style.width = '5%';
+		</script>
 
 		<!-- Load Stripe.js -->
 		<script src="https://js.stripe.com/v3/"></script>

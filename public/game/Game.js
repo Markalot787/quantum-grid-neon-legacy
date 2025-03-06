@@ -80,7 +80,7 @@ export class Game {
 		};
 	}
 
-	init() {
+	async init() {
 		// Create scene
 		this.scene = new THREE.Scene();
 		this.scene.background = new THREE.Color(0x000011);
@@ -112,16 +112,16 @@ export class Game {
 		document.body.appendChild(this.renderer.domElement);
 
 		// Set up post-processing
-		this.setupPostProcessing();
+		await this.setupPostProcessing();
 
 		// Create skybox
-		this.setupSkybox();
+		await this.setupSkybox();
 
 		// Add lights
 		this.setupLights();
 
 		// Create environment map for reflections
-		this.setupEnvironmentMap();
+		await this.setupEnvironmentMap();
 
 		// Create particle systems
 		this.setupParticleSystems();
@@ -729,7 +729,7 @@ export class Game {
 		};
 	}
 
-	setupPostProcessing() {
+	async setupPostProcessing() {
 		// Create composer
 		this.composer = new EffectComposer(this.renderer);
 
@@ -752,7 +752,7 @@ export class Game {
 		this.composer.addPass(copyPass);
 	}
 
-	setupSkybox() {
+	async setupSkybox() {
 		// Create skybox texture using our utility
 		const skyboxTextures = createDigitalSkybox(
 			this.renderer,
@@ -780,35 +780,21 @@ export class Game {
 
 		const skybox = new THREE.Mesh(skyboxGeometry, skyboxMaterials);
 		this.scene.add(skybox);
+
+		return Promise.resolve(); // Resolve immediately since we're not actually doing async operations
 	}
 
-	setupEnvironmentMap() {
-		// Create a cube texture for environment mapping
-		// Use a simple environment cube for reflections
-		const path = '';
-		const format = '.jpg';
-		const urls = [
-			path + 'px' + format,
-			path + 'nx' + format,
-			path + 'py' + format,
-			path + 'ny' + format,
-			path + 'pz' + format,
-			path + 'nz' + format,
-		];
-
-		// Use the skybox textures as a placeholder
-		// In a full implementation, we'd load proper HDR environment maps
-		this.envMap = new THREE.CubeTextureLoader().load(
-			urls,
-			(map) => {
-				// Handle load here
-			},
-			() => {
-				// Use generated textures as fallback
-				// This is a simplified approach, in a real game we'd use proper envmaps
-				this.envMap = null;
-			}
-		);
+	async setupEnvironmentMap() {
+		try {
+			// For now, we'll just resolve immediately without a real environment map
+			// In a full implementation, we'd load proper HDR environment maps
+			this.envMap = null;
+			return Promise.resolve();
+		} catch (error) {
+			console.error('Error loading environment map:', error);
+			this.envMap = null;
+			return Promise.resolve();
+		}
 	}
 
 	setupParticleSystems() {

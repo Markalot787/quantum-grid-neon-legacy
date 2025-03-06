@@ -1,23 +1,36 @@
-// threeImports.js - A centralized place to import and re-export Three.js modules
-import * as THREE from 'https://cdn.jsdelivr.net/npm/three@0.157.0/build/three.module.js';
+// threeImports.js - Import Three.js as a global variable and expose other modules
+// Import Three.js
+import * as THREEModule from 'https://cdn.jsdelivr.net/npm/three@0.157.0/build/three.module.js';
+
+// Make THREE accessible globally
+window.THREE = THREEModule;
+
+// Export these for modules that need specific imports
+export const THREE = THREEModule;
+
+// Workaround to avoid direct imports from "three" in the extension modules
+const EXTENSIONS_BASE_URL =
+	'https://cdn.jsdelivr.net/npm/three@0.157.0/examples/jsm/';
 
 // Import Three.js extensions
-import { EffectComposer } from 'https://unpkg.com/three@0.157.0/examples/jsm/postprocessing/EffectComposer.js';
-import { RenderPass } from 'https://unpkg.com/three@0.157.0/examples/jsm/postprocessing/RenderPass.js';
-import { UnrealBloomPass } from 'https://unpkg.com/three@0.157.0/examples/jsm/postprocessing/UnrealBloomPass.js';
-import { ShaderPass } from 'https://unpkg.com/three@0.157.0/examples/jsm/postprocessing/ShaderPass.js';
-import { CopyShader } from 'https://unpkg.com/three@0.157.0/examples/jsm/shaders/CopyShader.js';
-import { OrbitControls } from 'https://unpkg.com/three@0.157.0/examples/jsm/controls/OrbitControls.js';
-import { GLTFLoader } from 'https://unpkg.com/three@0.157.0/examples/jsm/loaders/GLTFLoader.js';
-
-// Export all of these modules
-export {
-	THREE,
-	EffectComposer,
-	RenderPass,
-	UnrealBloomPass,
-	ShaderPass,
-	CopyShader,
-	OrbitControls,
-	GLTFLoader,
-};
+export const EffectComposer = (
+	await import(`${EXTENSIONS_BASE_URL}postprocessing/EffectComposer.js`)
+).EffectComposer;
+export const RenderPass = (
+	await import(`${EXTENSIONS_BASE_URL}postprocessing/RenderPass.js`)
+).RenderPass;
+export const UnrealBloomPass = (
+	await import(`${EXTENSIONS_BASE_URL}postprocessing/UnrealBloomPass.js`)
+).UnrealBloomPass;
+export const ShaderPass = (
+	await import(`${EXTENSIONS_BASE_URL}postprocessing/ShaderPass.js`)
+).ShaderPass;
+export const CopyShader = (
+	await import(`${EXTENSIONS_BASE_URL}shaders/CopyShader.js`)
+).CopyShader;
+export const OrbitControls = (
+	await import(`${EXTENSIONS_BASE_URL}controls/OrbitControls.js`)
+).OrbitControls;
+export const GLTFLoader = (
+	await import(`${EXTENSIONS_BASE_URL}loaders/GLTFLoader.js`)
+).GLTFLoader;
