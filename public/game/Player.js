@@ -17,16 +17,49 @@ export class Player {
 	}
 
 	init() {
-		// Create player mesh
+		// Create player mesh with cyberpunk look
 		const geometry = new THREE.CapsuleGeometry(this.size / 2, this.size, 2, 8);
-		const material = new THREE.MeshLambertMaterial({ color: 0xffff00 });
+
+		// Create a glowing cyberpunk material for the player
+		const material = new THREE.MeshStandardMaterial({
+			color: 0xffff00, // Yellow base
+			emissive: 0xffff00, // Yellow glow
+			emissiveIntensity: 0.7, // Strong glow
+			metalness: 0.7, // Metallic look
+			roughness: 0.2, // Smooth surface
+			transparent: true, // Enable transparency
+			opacity: 0.9, // Slightly transparent
+		});
+
+		// Create the main player mesh
 		this.mesh = new THREE.Mesh(geometry, material);
+
+		// Add a wireframe for neon outline effect
+		const wireframe = new THREE.LineSegments(
+			new THREE.EdgesGeometry(geometry),
+			new THREE.LineBasicMaterial({
+				color: 0xffff00,
+				transparent: true,
+				opacity: 0.8,
+			})
+		);
+		this.wireframe = wireframe;
+		this.mesh.add(wireframe);
+
+		// Add a point light to player for dynamic lighting
+		const playerLight = new THREE.PointLight(0xffff00, 0.7, 3);
+		playerLight.position.set(0, 0, 0);
+		this.playerLight = playerLight;
+		this.mesh.add(playerLight);
 
 		// Position player
 		this.resetPosition();
 
 		// Add to scene
 		this.game.scene.add(this.mesh);
+
+		// Add pulsing effect
+		this.addPulsingEffect();
 	}
 
 	resetPosition() {
@@ -110,5 +143,41 @@ export class Player {
 			x: this.position.x,
 			z: this.position.z,
 		};
+	}
+
+	// Add a pulsing glow effect to the player
+	addPulsingEffect() {
+		this.pulseData = {
+			time: 0,
+			speed: 1.2,
+		};
+
+		// Create animation function
+		this.pulseAnimation = (delta) => {
+			this.pulseData.time += delta * this.pulseData.speed;
+
+			// Pulse emissive intensity
+			if (this.mesh && this.mesh.material) {
+				this.mesh.material.emissiveIntensity =
+					0.5 + (Math.sin(this.pulseData.time * 3) * 0.5 + 0.5) * 0.5;
+			}
+
+			// Pulse wireframe opacity
+			if (this.wireframe && this.wireframe.material) {
+				this.wireframe.material.opacity =
+					0.6 + (Math.sin(this.pulseData.time * 2) * 0.5 + 0.5) * 0.4;
+			}
+
+			// Pulse light intensity
+			if (this.playerLight) {
+				this.playerLight.intensity =
+					0.5 + (Math.sin(this.pulseData.time * 4) * 0.5 + 0.5) * 0.5;
+			}
+
+			return true; // Keep animation running
+		};
+
+		// Add animation to game
+		this.game.addAnimation(this.pulseAnimation);
 	}
 }

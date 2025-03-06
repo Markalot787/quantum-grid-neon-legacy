@@ -48,12 +48,14 @@ export class Level {
 				);
 			}
 
+			// Store platform dimensions for gameplay
+			const width = this.game.settings.stageWidth;
+			const length = this.game.settings.stageLength;
+			this.platformWidth = width;
+			this.platformLength = length;
+
 			// Create platform geometry
-			const geometry = new THREE.BoxGeometry(
-				this.game.settings.stageWidth,
-				0.5,
-				this.game.settings.stageLength
-			);
+			const geometry = new THREE.BoxGeometry(width, 0.5, length);
 
 			// Create cyberpunk-style material with neon grid
 			const material = new THREE.MeshStandardMaterial({
@@ -68,13 +70,19 @@ export class Level {
 
 			// Create platform mesh
 			this.platform = new THREE.Mesh(geometry, material);
+
+			// Position centered at origin with y slightly below 0
 			this.platform.position.set(
-				this.game.settings.stageWidth / 2 - 0.5,
-				-0.25,
-				this.game.settings.stageLength / 2 - 0.5
+				0, // Center X
+				-0.25, // Slightly below 0 on Y
+				length / 2 - 0.5 // Centered on Z
 			);
+
 			this.platform.receiveShadow = true;
 			this.game.scene.add(this.platform);
+
+			// Create platform grid for gameplay logic
+			this.createPlatformGrid(width, length);
 
 			// Add glowing edges to the platform
 			this.addPlatformEdges();
@@ -82,6 +90,19 @@ export class Level {
 			console.log('Platform created successfully');
 		} catch (error) {
 			console.error('Error creating platform:', error);
+		}
+	}
+
+	// Create platform grid for gameplay logic
+	createPlatformGrid(width, length) {
+		// Create platform grid for gameplay
+		this.platformGrid = [];
+
+		// Use stageWidth to calculate grid bounds
+		for (let x = -Math.floor(width / 2); x <= Math.floor(width / 2); x++) {
+			for (let z = 0; z < length; z++) {
+				this.platformGrid.push({ x, z, exists: true });
+			}
 		}
 	}
 
@@ -101,26 +122,29 @@ export class Level {
 				metalness: 0.8,
 			});
 
+			// Calculate edge positions based on centered platform
+			const halfWidth = width / 2;
+
 			// Left edge
 			const leftEdge = new THREE.Mesh(edgeGeometry, edgeMaterial);
-			leftEdge.position.set(0, 0, length / 2 - 0.5);
+			leftEdge.position.set(-halfWidth, 0, length / 2 - 0.5);
 			this.game.scene.add(leftEdge);
 
 			// Right edge
 			const rightEdge = new THREE.Mesh(edgeGeometry, edgeMaterial);
-			rightEdge.position.set(width - 1, 0, length / 2 - 0.5);
+			rightEdge.position.set(halfWidth, 0, length / 2 - 0.5);
 			this.game.scene.add(rightEdge);
 
 			// Front edge (rotated)
 			const frontEdgeGeometry = new THREE.BoxGeometry(0.1, 0.1, width);
 			const frontEdge = new THREE.Mesh(frontEdgeGeometry, edgeMaterial);
-			frontEdge.position.set(width / 2 - 0.5, 0, 0);
+			frontEdge.position.set(0, 0, 0);
 			frontEdge.rotation.y = Math.PI / 2;
 			this.game.scene.add(frontEdge);
 
 			// Back edge (rotated)
 			const backEdge = new THREE.Mesh(frontEdgeGeometry, edgeMaterial);
-			backEdge.position.set(width / 2 - 0.5, 0, length - 1);
+			backEdge.position.set(0, 0, length - 1);
 			backEdge.rotation.y = Math.PI / 2;
 			this.game.scene.add(backEdge);
 
@@ -155,7 +179,8 @@ export class Level {
 
 		// Wave properties based on level
 		const cubeCount = this.game.settings.initialCubeCount;
-		const width = this.game.settings.stageWidth;
+		const stageWidth = this.game.settings.stageWidth;
+		const stageLength = this.game.settings.stageLength;
 		const level = this.game.currentLevel;
 
 		// Calculate cube distribution
@@ -163,23 +188,30 @@ export class Level {
 		let forbiddenCount = Math.floor(cubeCount * 0.2); // 20% forbidden
 		let advantageCount = Math.floor(cubeCount * 0.1); // 10% advantage
 
-		// Ensure at least one of each type (for higher levels)
+		// Ensure at least one of each type for higher levels
 		if (level >= 2 && forbiddenCount === 0) forbiddenCount = 1;
 		if (level >= 3 && advantageCount === 0) advantageCount = 1;
 
-		// Create cubes
-		const startZ = this.platformLength + 2; // Start beyond platform
-		const halfWidth = Math.floor(width / 2);
+		// Spawn cubes much further away to give player time to react
+		// Start at stageLength + 10 for a bigger gap
+		const startZ = stageLength + 10;
 
-		// Precalculate positions without duplicates
+		// Spread cubes further apart - use 6 rows instead of 3
+		const spawnDepth = 6;
+
+		// Calculate grid positions for spawning
 		const positions = [];
+		// Use the half width from the stage width
+		const halfWidth = Math.floor(stageWidth / 2);
+
+		// Generate positions in a grid pattern, far away from player
 		for (let x = -halfWidth; x <= halfWidth; x++) {
-			for (let z = startZ; z < startZ + 3; z++) {
+			for (let z = startZ; z < startZ + spawnDepth; z++) {
 				positions.push({ x, z });
 			}
 		}
 
-		// Shuffle positions
+		// Shuffle positions for random placement
 		for (let i = positions.length - 1; i > 0; i--) {
 			const j = Math.floor(Math.random() * (i + 1));
 			[positions[i], positions[j]] = [positions[j], positions[i]];
@@ -349,12 +381,21 @@ export class Level {
 	}
 
 	isPlatformAt(x, z) {
-		// Check if platform exists at this position
-		for (const tile of this.platform) {
+		// Check if platform exists at this position and is within bounds
+		if (!this.platformGrid) return false;
+
+		// Check if coordinates are within platform bounds
+		const halfWidth = Math.floor(this.game.settings.stageWidth / 2);
+		if (x < -halfWidth || x > halfWidth) return false;
+		if (z < 0 || z >= this.game.settings.stageLength) return false;
+
+		// Check in platformGrid array
+		for (const tile of this.platformGrid) {
 			if (tile.x === x && tile.z === z && tile.exists) {
 				return true;
 			}
 		}
+
 		return false;
 	}
 

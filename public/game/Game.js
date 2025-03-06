@@ -36,8 +36,8 @@ export class Game {
 		this.settings = {
 			stageWidth: 5,
 			stageLength: 16,
-			cubeSpeed: 2.0,
-			initialCubeCount: 12,
+			cubeSpeed: 1.0,
+			initialCubeCount: 8,
 		};
 
 		// Camera movement parameters
@@ -574,9 +574,9 @@ export class Game {
 		this.markedTile = null;
 		this.activatedAdvantage = null;
 
-		// Configure level based on level number
-		this.settings.cubeSpeed = 1.5 + levelNumber * 0.25;
-		this.settings.initialCubeCount = 10 + levelNumber * 2;
+		// Configure level based on level number - use slower speed progression
+		this.settings.cubeSpeed = 1.0 + levelNumber * 0.15; // Reduced from 0.25 to 0.15
+		this.settings.initialCubeCount = 8 + levelNumber * 1; // Reduced from 2 to 1
 
 		// Generate level
 		this.level.generateLevel(levelNumber);
@@ -766,90 +766,89 @@ export class Game {
 		try {
 			console.log('Setting up post-processing effects...');
 
-			// Import required post-processing modules
-			import(
-				'https://cdn.jsdelivr.net/npm/three@0.157.0/examples/jsm/postprocessing/EffectComposer.js'
-			)
-				.then(({ EffectComposer }) => {
-					import(
-						'https://cdn.jsdelivr.net/npm/three@0.157.0/examples/jsm/postprocessing/RenderPass.js'
-					)
-						.then(({ RenderPass }) => {
-							import(
-								'https://cdn.jsdelivr.net/npm/three@0.157.0/examples/jsm/postprocessing/UnrealBloomPass.js'
-							)
-								.then(({ UnrealBloomPass }) => {
-									// Create effect composer
-									this.composer = new EffectComposer(this.renderer);
+			// Create a simple post-processing effect using CSS filters for the whole page
+			this.renderer.domElement.style.filter =
+				'brightness(1.1) contrast(1.05) saturate(1.2)';
 
-									// Add render pass
-									const renderPass = new RenderPass(this.scene, this.camera);
-									this.composer.addPass(renderPass);
+			// Load required post-processing scripts
+			const loadScript = (url) => {
+				return new Promise((resolve, reject) => {
+					const script = document.createElement('script');
+					script.src = url;
+					script.onload = resolve;
+					script.onerror = reject;
+					document.head.appendChild(script);
+				});
+			};
 
-									// Add bloom pass for neon glow effect
-									const bloomPass = new UnrealBloomPass(
-										new THREE.Vector2(window.innerWidth, window.innerHeight),
-										1.5, // Strength
-										0.4, // Radius
-										0.85 // Threshold
-									);
-									bloomPass.threshold = 0.3;
-									bloomPass.strength = 1.2;
-									bloomPass.radius = 0.7;
-									this.composer.addPass(bloomPass);
+			// Load the required modules in sequence
+			Promise.all([
+				loadScript(
+					'https://cdn.jsdelivr.net/npm/three@0.157.0/examples/jsm/postprocessing/EffectComposer.js'
+				),
+				loadScript(
+					'https://cdn.jsdelivr.net/npm/three@0.157.0/examples/jsm/postprocessing/RenderPass.js'
+				),
+				loadScript(
+					'https://cdn.jsdelivr.net/npm/three@0.157.0/examples/jsm/postprocessing/UnrealBloomPass.js'
+				),
+			])
+				.then(() => {
+					// Now that the scripts are loaded, we can use the classes
+					const EffectComposer = THREE.EffectComposer;
+					const RenderPass = THREE.RenderPass;
+					const UnrealBloomPass = THREE.UnrealBloomPass;
 
-									console.log('Advanced post-processing setup complete');
+					if (EffectComposer && RenderPass && UnrealBloomPass) {
+						// Create effect composer
+						this.composer = new EffectComposer(this.renderer);
 
-									// Update the animate method to use the composer
-									const originalAnimate = this.animate.bind(this);
-									this.animate = () => {
-										requestAnimationFrame(this.animate.bind(this));
+						// Add render pass
+						const renderPass = new RenderPass(this.scene, this.camera);
+						this.composer.addPass(renderPass);
 
-										const delta = this.clock.getDelta();
+						// Add bloom pass for neon glow effect
+						const bloomPass = new UnrealBloomPass(
+							new THREE.Vector2(window.innerWidth, window.innerHeight),
+							1.5, // Strength
+							0.4, // Radius
+							0.85 // Threshold
+						);
+						bloomPass.threshold = 0.3;
+						bloomPass.strength = 1.2;
+						bloomPass.radius = 0.7;
+						this.composer.addPass(bloomPass);
 
-										if (!this.paused) {
-											this.update(delta);
-										}
+						console.log('Advanced post-processing setup complete');
 
-										// Use composer instead of renderer
-										if (this.composer) {
-											this.composer.render();
-										} else {
-											this.renderer.render(this.scene, this.camera);
-										}
-									};
+						// Update the animate method to use the composer
+						const originalAnimate = this.animate.bind(this);
+						this.animate = () => {
+							requestAnimationFrame(this.animate.bind(this));
 
-									// Start animation loop again
-									this.animate();
-								})
-								.catch((error) => {
-									console.warn(
-										'Failed to load UnrealBloomPass, falling back to basic rendering:',
-										error
-									);
-									// Fallback to basic CSS filter
-									this.renderer.domElement.style.filter =
-										'brightness(1.1) contrast(1.05) saturate(1.2)';
-								});
-						})
-						.catch((error) => {
-							console.warn(
-								'Failed to load RenderPass, falling back to basic rendering:',
-								error
-							);
-							// Fallback to basic CSS filter
-							this.renderer.domElement.style.filter =
-								'brightness(1.1) contrast(1.05) saturate(1.2)';
-						});
+							const delta = this.clock.getDelta();
+
+							if (!this.paused) {
+								this.update(delta);
+							}
+
+							// Use composer instead of renderer
+							if (this.composer) {
+								this.composer.render();
+							} else {
+								this.renderer.render(this.scene, this.camera);
+							}
+						};
+
+						// Start animation loop again
+						this.animate();
+					}
 				})
 				.catch((error) => {
 					console.warn(
-						'Failed to load EffectComposer, falling back to basic rendering:',
+						'Failed to load post-processing modules, using basic rendering:',
 						error
 					);
-					// Fallback to basic CSS filter
-					this.renderer.domElement.style.filter =
-						'brightness(1.1) contrast(1.05) saturate(1.2)';
 				});
 		} catch (error) {
 			console.warn(
@@ -857,9 +856,6 @@ export class Game {
 				error
 			);
 			// Don't throw - this is non-critical, we can continue without post-processing
-			// Fallback to basic CSS filter
-			this.renderer.domElement.style.filter =
-				'brightness(1.1) contrast(1.05) saturate(1.2)';
 		}
 	}
 }
