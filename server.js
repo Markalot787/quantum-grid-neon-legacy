@@ -1,24 +1,10 @@
 const express = require('express');
 const path = require('path');
+require('dotenv').config();
 const app = express();
 const PORT = process.env.PORT || 3000;
 
-// Middleware to set proper MIME types for JavaScript modules
-app.use((req, res, next) => {
-	if (req.path.endsWith('.js')) {
-		res.set('Content-Type', 'application/javascript');
-	}
-	next();
-});
-
-// Use dotenv if present
-try {
-	require('dotenv').config();
-} catch (e) {
-	console.log('dotenv not installed, skipping...');
-}
-
-// Add Stripe integration if the API key is available
+// Add Stripe integration
 const stripe = process.env.STRIPE_SECRET_KEY
 	? require('stripe')(process.env.STRIPE_SECRET_KEY)
 	: null;

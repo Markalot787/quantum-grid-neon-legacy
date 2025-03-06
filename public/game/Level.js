@@ -1,7 +1,6 @@
-// Let THREE be globally loaded
-// import * as THREE from 'three';
+import * as THREE from 'https://cdn.jsdelivr.net/npm/three@0.157.0/build/three.module.js';
 import { Cube } from './Cube.js';
-import { createGridTexture } from '../assets/textures/grid_texture.js';
+import { createGridTexture } from '../assets/textures/grid.js';
 
 export class Level {
 	constructor(game) {
@@ -16,8 +15,6 @@ export class Level {
 		this.platformMesh = null;
 		this.platformWidth = 0;
 		this.platformLength = 0;
-		this.gridTexture = null;
-		this.destructionEffects = [];
 
 		// Level state
 		this.levelComplete = false;
@@ -32,289 +29,43 @@ export class Level {
 		this.platformWidth = width;
 		this.platformLength = length;
 
-		// Create platform group
-		const platformGroup = new THREE.Group();
+		// Create grid texture
+		const gridTexture = createGridTexture(
+			this.game.renderer,
+			512,
+			512,
+			8,
+			0x111122,
+			0x0088aa,
+			0x00ffff
+		);
 
-		// Create individual platform tiles for better appearance
-		for (let x = -Math.floor(width / 2); x <= Math.floor(width / 2); x++) {
-			for (let z = 0; z < length; z++) {
-				// Create tile geometry
-				const tileGeometry = new THREE.BoxGeometry(0.95, 0.2, 0.95);
-
-				// Create materials with neon glow for edges
-				const isEvenTile = (x + z) % 2 === 0;
-				const mainColor = isEvenTile ? 0x222244 : 0x333355; // Dark blue/purple base
-
-				const tileMaterial = new THREE.MeshStandardMaterial({
-					color: mainColor,
-					roughness: 0.4,
-					metalness: 0.6,
-					emissive: isEvenTile ? 0x000022 : 0x000033,
-					emissiveIntensity: 0.2,
-				});
-
-				// Create tile mesh
-				const tileMesh = new THREE.Mesh(tileGeometry, tileMaterial);
-				tileMesh.position.set(x, -0.1, z);
-				tileMesh.receiveShadow = true;
-				tileMesh.castShadow = true;
-
-				// Add neon edge glow for some tiles
-				if (
-					x === -Math.floor(width / 2) ||
-					x === Math.floor(width / 2) ||
-					z === 0 ||
-					z === length - 1 ||
-					Math.random() < 0.1
-				) {
-					// Create edge geometry
-					const edgeGeometry = new THREE.EdgesGeometry(tileGeometry);
-
-					// Create edge material with neon glow
-					const edgeColor =
-						z % 3 === 0 ? 0x00ffff : z % 3 === 1 ? 0xff00ff : 0x00ff88;
-					const edgeMaterial = new THREE.LineBasicMaterial({
-						color: edgeColor,
-						linewidth: 1,
-					});
-
-					const edges = new THREE.LineSegments(edgeGeometry, edgeMaterial);
-					tileMesh.add(edges);
-				}
-
-				// Add to platform group
-				platformGroup.add(tileMesh);
-
-				// Track platform tiles
-				this.platform.push({
-					x,
-					z,
-					exists: true,
-					mesh: tileMesh,
-				});
-			}
-		}
-
-		// Create base platform with neon trim
-		const baseGeometry = new THREE.BoxGeometry(width + 0.2, 0.3, length + 0.2);
-		const baseMaterial = new THREE.MeshStandardMaterial({
-			color: 0x111122,
-			roughness: 0.5,
+		// Create platform geometry
+		const geometry = new THREE.BoxGeometry(width, 0.5, length);
+		const material = new THREE.MeshStandardMaterial({
+			map: gridTexture,
 			metalness: 0.7,
-			emissive: 0x000011,
-			emissiveIntensity: 0.2,
+			roughness: 0.3,
+			emissive: 0x111144,
+			emissiveIntensity: 0.1,
 		});
 
-		const baseMesh = new THREE.Mesh(baseGeometry, baseMaterial);
-		baseMesh.position.set(0, -0.3, length / 2 - 0.5);
-		baseMesh.receiveShadow = true;
-
-		// Add neon trim to base
-		const trimGeometry = new THREE.BoxGeometry(width + 0.3, 0.05, length + 0.3);
-		const trimMaterial = new THREE.MeshStandardMaterial({
-			color: 0x00ffff,
-			roughness: 0.2,
-			metalness: 0.8,
-			emissive: 0x00ffff,
-			emissiveIntensity: 0.8,
-			transparent: true,
-			opacity: 0.8,
-		});
-
-		const trimMesh = new THREE.Mesh(trimGeometry, trimMaterial);
-		trimMesh.position.set(0, -0.4, length / 2 - 0.5);
+		// Create mesh
+		this.platformMesh = new THREE.Mesh(geometry, material);
+		this.platformMesh.position.set(0, -0.25, length / 2 - 0.5);
+		this.platformMesh.receiveShadow = true;
 
 		// Add to scene
-		this.platformMesh = platformGroup;
-		this.game.scene.add(platformGroup);
-		this.game.scene.add(baseMesh);
-		this.game.scene.add(trimMesh);
+		this.game.scene.add(this.platformMesh);
 
-		// Create neon grid background
-		this.createNeonBackground();
+		// Create platform grid for gameplay
+		this.platform = [];
 
-		// Add atmospheric fog
-		this.game.scene.fog = new THREE.FogExp2(0x000033, 0.03);
-
-		// Add ambient light for base illumination
-		const ambientLight = new THREE.AmbientLight(0x222244, 1.0);
-		this.game.scene.add(ambientLight);
-
-		// Add point lights for neon glow
-		const colors = [0x00ffff, 0xff00ff, 0x00ff88];
-
-		for (let i = 0; i < 3; i++) {
-			const light = new THREE.PointLight(colors[i], 1, 20);
-			const x = (Math.random() - 0.5) * width * 2;
-			const z = Math.random() * length;
-			light.position.set(x, 2 + Math.random() * 3, z);
-			this.game.scene.add(light);
+		for (let x = -Math.floor(width / 2); x <= Math.floor(width / 2); x++) {
+			for (let z = 0; z < length; z++) {
+				this.platform.push({ x, z, exists: true });
+			}
 		}
-	}
-
-	createNeonBackground() {
-		// Create a large plane for the background
-		const bgGeometry = new THREE.PlaneGeometry(100, 100);
-
-		// Create a canvas for the grid texture
-		const canvas = document.createElement('canvas');
-		canvas.width = 1024;
-		canvas.height = 1024;
-		const ctx = canvas.getContext('2d');
-
-		// Fill background
-		const gradient = ctx.createLinearGradient(0, 0, 0, canvas.height);
-		gradient.addColorStop(0, '#000033');
-		gradient.addColorStop(1, '#000011');
-		ctx.fillStyle = gradient;
-		ctx.fillRect(0, 0, canvas.width, canvas.height);
-
-		// Draw grid lines
-		const gridSize = 32;
-		const cellSize = canvas.width / gridSize;
-
-		// Draw cyan grid lines
-		ctx.strokeStyle = 'rgba(0, 255, 255, 0.3)';
-		ctx.lineWidth = 1;
-
-		for (let i = 0; i <= gridSize; i++) {
-			// Vertical lines
-			ctx.beginPath();
-			ctx.moveTo(i * cellSize, 0);
-			ctx.lineTo(i * cellSize, canvas.height);
-			ctx.stroke();
-
-			// Horizontal lines
-			ctx.beginPath();
-			ctx.moveTo(0, i * cellSize);
-			ctx.lineTo(canvas.width, i * cellSize);
-			ctx.stroke();
-		}
-
-		// Draw magenta grid lines (larger grid)
-		ctx.strokeStyle = 'rgba(255, 0, 255, 0.2)';
-		ctx.lineWidth = 2;
-
-		const largeGridSize = 8;
-		const largeCellSize = canvas.width / largeGridSize;
-
-		for (let i = 0; i <= largeGridSize; i++) {
-			// Vertical lines
-			ctx.beginPath();
-			ctx.moveTo(i * largeCellSize, 0);
-			ctx.lineTo(i * largeCellSize, canvas.height);
-			ctx.stroke();
-
-			// Horizontal lines
-			ctx.beginPath();
-			ctx.moveTo(0, i * largeCellSize);
-			ctx.lineTo(canvas.width, i * largeCellSize);
-			ctx.stroke();
-		}
-
-		// Add some random "stars" or light points
-		for (let i = 0; i < 100; i++) {
-			const x = Math.random() * canvas.width;
-			const y = Math.random() * canvas.height;
-			const radius = Math.random() * 2 + 1;
-
-			const gradient = ctx.createRadialGradient(x, y, 0, x, y, radius);
-			gradient.addColorStop(0, 'rgba(255, 255, 255, 0.8)');
-			gradient.addColorStop(1, 'rgba(255, 255, 255, 0)');
-
-			ctx.fillStyle = gradient;
-			ctx.beginPath();
-			ctx.arc(x, y, radius, 0, Math.PI * 2);
-			ctx.fill();
-		}
-
-		// Create texture from canvas
-		const texture = new THREE.CanvasTexture(canvas);
-		texture.wrapS = THREE.RepeatWrapping;
-		texture.wrapT = THREE.RepeatWrapping;
-		texture.repeat.set(2, 2);
-
-		// Create material with the texture
-		const material = new THREE.MeshBasicMaterial({
-			map: texture,
-			side: THREE.DoubleSide,
-			transparent: true,
-			opacity: 0.8,
-		});
-
-		// Create mesh and position it
-		const bgMesh = new THREE.Mesh(bgGeometry, material);
-		bgMesh.rotation.x = Math.PI / 2;
-		bgMesh.position.y = -10;
-
-		this.game.scene.add(bgMesh);
-
-		// Add a second background plane with different grid for parallax effect
-		const bgGeometry2 = new THREE.PlaneGeometry(200, 200);
-
-		// Create a canvas for the second grid texture
-		const canvas2 = document.createElement('canvas');
-		canvas2.width = 1024;
-		canvas2.height = 1024;
-		const ctx2 = canvas2.getContext('2d');
-
-		// Fill background (transparent)
-		ctx2.fillStyle = 'rgba(0, 0, 0, 0)';
-		ctx2.fillRect(0, 0, canvas2.width, canvas2.height);
-
-		// Draw larger grid lines
-		const gridSize2 = 16;
-		const cellSize2 = canvas2.width / gridSize2;
-
-		// Draw green grid lines
-		ctx2.strokeStyle = 'rgba(0, 255, 128, 0.15)';
-		ctx2.lineWidth = 3;
-
-		for (let i = 0; i <= gridSize2; i++) {
-			// Vertical lines
-			ctx2.beginPath();
-			ctx2.moveTo(i * cellSize2, 0);
-			ctx2.lineTo(i * cellSize2, canvas2.height);
-			ctx2.stroke();
-
-			// Horizontal lines
-			ctx2.beginPath();
-			ctx2.moveTo(0, i * cellSize2);
-			ctx2.lineTo(canvas2.width, i * cellSize2);
-			ctx2.stroke();
-		}
-
-		// Create texture from second canvas
-		const texture2 = new THREE.CanvasTexture(canvas2);
-		texture2.wrapS = THREE.RepeatWrapping;
-		texture2.wrapT = THREE.RepeatWrapping;
-		texture2.repeat.set(4, 4);
-
-		// Create material with the second texture
-		const material2 = new THREE.MeshBasicMaterial({
-			map: texture2,
-			side: THREE.DoubleSide,
-			transparent: true,
-			opacity: 0.5,
-			depthWrite: false,
-		});
-
-		// Create mesh and position it
-		const bgMesh2 = new THREE.Mesh(bgGeometry2, material2);
-		bgMesh2.rotation.x = Math.PI / 2;
-		bgMesh2.position.y = -20;
-
-		this.game.scene.add(bgMesh2);
-
-		// Animate the background grids
-		const animate = () => {
-			texture.offset.y += 0.0005;
-			texture2.offset.y += 0.0002;
-
-			requestAnimationFrame(animate);
-		};
-
-		animate();
 	}
 
 	generateLevel(levelNumber) {
@@ -394,10 +145,6 @@ export class Level {
 			const { x, z } = positions[i];
 			this.createCube('advantage', x, z);
 		}
-
-		console.log(
-			`Generated wave ${this.waveIndex} with ${normalCount} normal, ${forbiddenCount} forbidden, and ${advantageCount} advantage cubes`
-		);
 	}
 
 	createCube(type, x, z) {
@@ -414,25 +161,15 @@ export class Level {
 			cube.update(delta);
 
 			// Check if cube fell off
-			if (cube.mesh && cube.mesh.position.z < -2) {
+			if (cube.mesh.position.z < -2) {
 				// Handle cube falling off
 				if (cube.type === 'normal') {
 					// Player missed a normal cube
-					this.createDestructionEffect(cube.mesh.position);
+					// Potential penalty here
 				}
 
 				// Remove cube
 				this.removeCube(cube);
-			}
-		}
-
-		// Update destruction effects
-		for (let i = this.destructionEffects.length - 1; i >= 0; i--) {
-			const effect = this.destructionEffects[i];
-			const completed = effect.update(delta);
-
-			if (completed) {
-				this.destructionEffects.splice(i, 1);
 			}
 		}
 
@@ -446,63 +183,63 @@ export class Level {
 	}
 
 	removeCube(cube) {
-		// Remove from scene
-		if (cube.mesh) {
-			this.game.scene.remove(cube.mesh);
-		}
+		// Remove cube from game arrays
+		this.cubes = this.cubes.filter((c) => c !== cube);
 
-		// Remove from array
-		const index = this.cubes.indexOf(cube);
-		if (index !== -1) {
-			this.cubes.splice(index, 1);
-		}
+		// Add destruction effect
+		this.createDestructionEffect(cube.mesh.position.clone());
+
+		// Remove from scene
+		this.game.scene.remove(cube.mesh);
 	}
 
 	createDestructionEffect(position) {
-		// Create a flash effect at the position
-		const geometry = new THREE.SphereGeometry(0.5, 8, 8);
-		const material = new THREE.MeshBasicMaterial({
+		// Create a white flash effect
+		const flashGeometry = new THREE.SphereGeometry(0.5, 16, 16);
+		const flashMaterial = new THREE.MeshBasicMaterial({
 			color: 0xffffff,
 			transparent: true,
 			opacity: 1,
 		});
 
-		const flash = new THREE.Mesh(geometry, material);
+		const flash = new THREE.Mesh(flashGeometry, flashMaterial);
 		flash.position.copy(position);
 		this.game.scene.add(flash);
 
-		// Animation
-		let time = 0;
-		const duration = 0.5;
+		// Animate the flash effect - grow and fade out
+		const startScale = 0.5;
+		const endScale = 2;
+		const duration = 0.5; // seconds
 
+		let elapsedTime = 0;
 		const updateFlash = (delta) => {
-			time += delta;
-			const progress = time / duration;
+			elapsedTime += delta;
+			const progress = Math.min(elapsedTime / duration, 1);
 
-			if (progress < 1) {
-				const scale = 1 + progress;
-				flash.scale.set(scale, scale, scale);
-				flash.material.opacity = 1 - progress;
-				return false;
-			} else {
+			// Scale up
+			const scale = startScale + (endScale - startScale) * progress;
+			flash.scale.set(scale, scale, scale);
+
+			// Fade out
+			flash.material.opacity = 1 - progress;
+
+			if (progress >= 1) {
+				// Animation complete, remove the effect
 				this.game.scene.remove(flash);
-				return true;
+				return true; // signal completion
 			}
+			return false;
 		};
 
-		// Add to destruction effects
-		this.destructionEffects.push({
-			update: updateFlash,
-		});
+		// Add to animation loop
+		this.game.addAnimation(updateFlash);
 	}
 
 	clearLevel() {
 		// Remove all cubes
 		for (let i = this.cubes.length - 1; i >= 0; i--) {
 			const cube = this.cubes[i];
-			if (cube.mesh) {
-				this.game.scene.remove(cube.mesh);
-			}
+			this.game.scene.remove(cube.mesh);
 		}
 
 		// Clear arrays
@@ -522,55 +259,16 @@ export class Level {
 		// Remove cubes on that row
 		for (let i = this.cubes.length - 1; i >= 0; i--) {
 			const cube = this.cubes[i];
-			if (cube.mesh && Math.round(cube.mesh.position.z) === row) {
+			if (Math.round(cube.mesh.position.z) === row) {
 				this.removeCube(cube);
 			}
 		}
 
-		// Update platform data and visuals
+		// Update platform data
 		for (let i = this.platform.length - 1; i >= 0; i--) {
 			const tile = this.platform[i];
 			if (tile.z === row) {
 				tile.exists = false;
-
-				// Visual effect for tile destruction
-				if (tile.mesh) {
-					const tileMesh = tile.mesh;
-
-					// Add falling animation
-					const startY = tileMesh.position.y;
-					const animation = {
-						mesh: tileMesh,
-						time: 0,
-						duration: 1.0,
-						update: (delta) => {
-							animation.time += delta;
-							const progress = Math.min(
-								animation.time / animation.duration,
-								1.0
-							);
-
-							// Fall and fade
-							tileMesh.position.y = startY - 10 * Math.pow(progress, 2);
-							tileMesh.rotation.x += delta * 5;
-							tileMesh.rotation.z += delta * 3;
-
-							if (tileMesh.material.opacity) {
-								tileMesh.material.transparent = true;
-								tileMesh.material.opacity = 1 - progress;
-							}
-
-							// Remove when animation complete
-							if (progress >= 1.0) {
-								this.platformMesh.remove(tileMesh);
-								return true; // Animation complete
-							}
-							return false;
-						},
-					};
-
-					this.destructionEffects.push(animation);
-				}
 			}
 		}
 
@@ -579,6 +277,10 @@ export class Level {
 		if (Math.round(playerPos.z) === row) {
 			this.gameOver = true;
 		}
+
+		// Update platform mesh (visual)
+		// For simplicity in the MVP, we just change the platform color
+		this.platformMesh.material.color.set(0x333333);
 	}
 
 	isPlatformAt(x, z) {
@@ -594,8 +296,6 @@ export class Level {
 	getCubesAtPosition(x, z) {
 		// Find all cubes at a specific position
 		return this.cubes.filter((cube) => {
-			if (!cube.mesh) return false;
-
 			// Use approximate position to handle moving cubes
 			const cubeX = Math.round(cube.mesh.position.x);
 			const cubeZ = Math.round(cube.mesh.position.z);
