@@ -28,6 +28,7 @@ export class Game {
 		this.paused = false;
 		this.markedTile = null;
 		this.activatedAdvantage = false;
+		this.hasAdvantage = false;
 
 		// Camera animation properties
 		this.cameraAnimation = {
@@ -35,103 +36,108 @@ export class Game {
 			time: 0,
 			amplitude: 3,
 			frequency: 0.5,
+			basePosition: null,
+			lookAtPosition: null,
 		};
 
 		// Game settings
 		this.settings = {
 			stageWidth: 7,
-			stageLength: 15,
+			stageLength: 7,
 			cubeSpeed: 1.0,
 			initialCubeCount: 5,
+			usePostProcessing: true,
 		};
 
 		this.init();
 	}
 
 	init() {
-		console.log('DEBUG - Game initialization started');
+		console.log('DEBUG - Game init started');
 
-		// Create scene
-		this.scene = new THREE.Scene();
-		this.scene.background = new THREE.Color(0x000033); // Dark blue background
-		console.log('DEBUG - Scene created');
+		this.setupRenderer();
 
-		// Create camera with better angle for platform visibility
-		this.camera = new THREE.PerspectiveCamera(
-			75,
-			window.innerWidth / window.innerHeight,
-			0.1,
-			1000
-		);
+		// Camera setup - position for clear view of the platform
+		console.log('DEBUG - Setting up camera');
 
-		// Position camera for better view of the game
-		this.camera.position.set(0, 15, -15);
-		this.camera.lookAt(0, 0, 5);
+		// Set camera to fixed position similar to the original IQ game
+		// Position camera behind and above the player for a clear view of the platform
+		this.camera.position.set(0, 8, -10);
+		this.camera.lookAt(0, 0, 3);
 
-		console.log('DEBUG - Camera setup:', {
-			position: this.camera.position,
-			rotation: this.camera.rotation,
-			fov: this.camera.fov,
-			lookingAt: new THREE.Vector3(0, 0, 5),
+		// Store original camera position and target for resetting
+		this.cameraAnimation.basePosition = new THREE.Vector3(0, 8, -10);
+		this.cameraAnimation.lookAtPosition = new THREE.Vector3(0, 0, 3);
+
+		console.log('Camera position set to:', this.camera.position);
+		console.log('Camera lookAt target:', { x: 0, y: 0, z: 3 });
+
+		// Setup scene components
+		this.setupLights();
+		this.setupSkybox();
+
+		// Initialize game components
+		console.log('DEBUG - Initializing game components');
+		this.ui = new UI(this);
+		this.level = new Level(this);
+		this.player = new Player(this);
+
+		console.log('DEBUG - Game components initialized:', {
+			ui: !!this.ui,
+			level: !!this.level,
+			player: !!this.player,
 		});
 
-		// Create renderer
-		this.setupRenderer();
-		this.setupSkybox();
-		this.setupPostProcessing();
-		this.setupLights();
+		// Setup post-processing effects
+		if (this.settings.usePostProcessing) {
+			this.setupPostProcessing();
+		}
 
-		console.log('DEBUG - Setup complete');
-
-		// Initialize player and level
-		this.player = new Player(this);
-		this.level = new Level(this);
-		this.ui = new UI(this);
-		this.paymentModal = new PaymentModal(this);
-
-		console.log('DEBUG - All objects initialized');
-
-		// Setup event listeners
+		// Add event listeners
 		window.addEventListener('resize', this.onWindowResize.bind(this));
 		document.addEventListener('keydown', this.handleKeyDown.bind(this));
 
-		// Initialize Stripe
-		if (typeof Stripe !== 'undefined') {
-			this.stripe = Stripe('pk_test_your_stripe_key');
-		}
-
-		// Show start screen
-		this.ui.showStartScreen();
-
-		// Hide loading screen when everything is ready
-		window.addEventListener('load', () => {
-			console.log('DEBUG - Window load event fired');
-			const loadingScreen = document.getElementById('loading-screen');
-			if (loadingScreen) {
-				console.log('DEBUG - Hiding loading screen');
-				loadingScreen.style.display = 'none';
-			} else {
-				console.log('DEBUG - Loading screen element not found');
-			}
-		});
-
 		// Start animation loop
 		this.animate();
+
+		// Show start screen initially
+		this.ui.showStartScreen();
+
+		console.log('DEBUG - Game init completed');
 	}
 
 	setupRenderer() {
-		this.renderer = new THREE.WebGLRenderer({ antialias: true });
-		this.renderer.setSize(window.innerWidth, window.innerHeight);
-		this.renderer.setClearColor(0x000033); // Dark blue background
-		this.renderer.shadowMap.enabled = true;
+		console.log('DEBUG - Setting up renderer');
 
-		// Append to container instead of body
+		// Create WebGL renderer with anti-aliasing
+		this.renderer = new THREE.WebGLRenderer({
+			antialias: true,
+			alpha: false,
+			powerPreference: 'high-performance',
+		});
+
+		// Set pixel ratio for better quality on high-DPI displays
+		this.renderer.setPixelRatio(window.devicePixelRatio);
+
+		// Set renderer size to match container
+		this.renderer.setSize(window.innerWidth, window.innerHeight);
+
+		// Enable shadows for better visual quality
+		this.renderer.shadowMap.enabled = true;
+		this.renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+
+		// Set clear color (background)
+		this.renderer.setClearColor(0x000033); // Dark blue background
+
+		// Append renderer to container
 		this.container.appendChild(this.renderer.domElement);
 
-		console.log(
-			'DEBUG - Renderer setup complete, appended to:',
-			this.container
-		);
+		console.log('DEBUG - Renderer setup complete with dimensions:', {
+			width: this.renderer.domElement.width,
+			height: this.renderer.domElement.height,
+			pixelRatio: this.renderer.getPixelRatio(),
+			shadows: this.renderer.shadowMap.enabled,
+		});
 	}
 
 	setupSkybox() {
@@ -238,18 +244,25 @@ export class Game {
 	setupLights() {
 		console.log('DEBUG - Setting up lights');
 
-		// Add ambient light
+		// Clear any existing lights
+		this.scene.children.forEach((child) => {
+			if (child.isLight) {
+				this.scene.remove(child);
+			}
+		});
+
+		// Add ambient light for overall scene brightness
 		const ambientLight = new THREE.AmbientLight(0xffffff, 0.6);
 		this.scene.add(ambientLight);
 
-		// Add directional light
-		const directionalLight = new THREE.DirectionalLight(0xffffff, 1.0);
+		// Add directional light for shadows and highlights
+		const directionalLight = new THREE.DirectionalLight(0xffffff, 0.8);
 		directionalLight.position.set(5, 10, 5);
 		directionalLight.castShadow = true;
 
-		// Improve shadow quality
-		directionalLight.shadow.mapSize.width = 1024;
-		directionalLight.shadow.mapSize.height = 1024;
+		// Configure shadow properties for better quality
+		directionalLight.shadow.mapSize.width = 2048;
+		directionalLight.shadow.mapSize.height = 2048;
 		directionalLight.shadow.camera.near = 0.5;
 		directionalLight.shadow.camera.far = 50;
 		directionalLight.shadow.camera.left = -10;
@@ -259,33 +272,10 @@ export class Game {
 
 		this.scene.add(directionalLight);
 
-		// Add colored point lights
-		const colors = [0x00ffff, 0xff00ff, 0xffff00];
-		const positions = [
-			[-5, 5, 0],
-			[5, 5, 0],
-			[0, 5, 5],
-		];
-
-		colors.forEach((color, i) => {
-			const light = new THREE.PointLight(color, 0.8, 20);
-			light.position.set(...positions[i]);
-			this.scene.add(light);
-		});
-
-		// Add spotlight that follows player
-		const spotlight = new THREE.SpotLight(
-			0xffffff,
-			1.0,
-			20,
-			Math.PI / 4,
-			0.5,
-			2
-		);
-		spotlight.position.set(0, 10, 0);
-		spotlight.target.position.set(0, 0, 5);
-		this.scene.add(spotlight);
-		this.scene.add(spotlight.target);
+		// Add a secondary directional light from the opposite side
+		const secondaryLight = new THREE.DirectionalLight(0xffffff, 0.3);
+		secondaryLight.position.set(-5, 5, -5);
+		this.scene.add(secondaryLight);
 
 		console.log('DEBUG - Lights setup complete');
 	}
@@ -302,16 +292,27 @@ export class Game {
 	}
 
 	handleKeyDown(event) {
-		if (this.gameOver || this.paused) return;
+		// Skip if game is not started or is paused
+		if (!this.gameStarted || this.gameOver || this.paused) return;
 
-		switch (event.key.toLowerCase()) {
+		// Convert key to lowercase for consistency
+		const key = event.key.toLowerCase();
+
+		// Handle different keys
+		switch (key) {
+			case ' ':
+				// Space bar - mark tile or capture
+				this.markTile();
+				break;
 			case 'arrowleft':
 			case 'a':
-				this.player.move('left');
+				// Reversed: Left key now moves right
+				this.player.move('right');
 				break;
 			case 'arrowright':
 			case 'd':
-				this.player.move('right');
+				// Reversed: Right key now moves left
+				this.player.move('left');
 				break;
 			case 'arrowup':
 			case 'w':
@@ -320,6 +321,10 @@ export class Game {
 			case 'arrowdown':
 			case 's':
 				this.player.move('down');
+				break;
+			case 'r':
+				// Activate advantage cube power
+				this.activateAdvantage();
 				break;
 			case 'c':
 				// Toggle camera animation
@@ -333,134 +338,264 @@ export class Game {
 	}
 
 	markTile() {
-		// Can only mark one tile at a time
-		if (this.markedTile) return;
+		console.log('DEBUG - markTile called');
 
-		// Get player position
-		const position = this.player.getPosition();
-		const x = position.x;
-		const z = position.z;
+		if (!this.gameStarted || this.gameOver || this.paused) {
+			console.log('DEBUG - Cannot mark tile: game not in active state');
+			return;
+		}
 
-		// Create marked tile
-		const geometry = new THREE.BoxGeometry(1, 0.1, 1);
+		const playerPos = this.player.getPosition();
+		const x = Math.round(playerPos.x);
+		const z = Math.round(playerPos.z);
+
+		console.log(`DEBUG - Attempting to mark tile at (${x}, ${z})`);
+
+		// Check if there's a platform tile at this position
+		if (!this.level.isPlatformAt(x, z)) {
+			console.log('DEBUG - No platform at this position');
+			return;
+		}
+
+		// Find the tile in the platform tiles array
+		const tile = this.level.platformTiles.find(
+			(t) => t.x === x && t.z === z && t.exists
+		);
+
+		if (!tile) {
+			console.log('DEBUG - Tile not found');
+			return;
+		}
+
+		// Mark the tile
+		tile.marked = true;
+
+		// Create visual effect for marked tile
+		const position = new THREE.Vector3(x, 0.1, z);
+		this.createMarkedTileEffect(position);
+
+		console.log(`DEBUG - Tile marked at (${x}, ${z})`);
+	}
+
+	createMarkedTileEffect(position) {
+		// Create a glowing square to indicate marked tile
+		const geometry = new THREE.PlaneGeometry(0.9, 0.9);
 		const material = new THREE.MeshBasicMaterial({
-			color: 0x0099ff,
+			color: 0x00ffff,
 			transparent: true,
-			opacity: 0.5,
+			opacity: 0.7,
+			side: THREE.DoubleSide,
 		});
 
-		const markedTileMesh = new THREE.Mesh(geometry, material);
-		markedTileMesh.position.set(x, 0.05, z);
-		this.scene.add(markedTileMesh);
+		const marker = new THREE.Mesh(geometry, material);
+		marker.position.copy(position);
+		marker.position.y += 0.15; // Slightly above platform
+		marker.rotation.x = -Math.PI / 2; // Lay flat
 
-		this.markedTile = {
-			position: new THREE.Vector2(x, z),
-			mesh: markedTileMesh,
+		this.scene.add(marker);
+
+		// Animate the marker
+		const startTime = this.clock.getElapsedTime();
+		const duration = 2.0; // Duration in seconds
+
+		const animateMarkedTile = () => {
+			const elapsed = this.clock.getElapsedTime() - startTime;
+			const progress = elapsed / duration;
+
+			if (progress >= 1) {
+				this.scene.remove(marker);
+				marker.geometry.dispose();
+				marker.material.dispose();
+				return;
+			}
+
+			// Pulse effect
+			const scale = 1 + 0.2 * Math.sin(progress * Math.PI * 4);
+			marker.scale.set(scale, scale, scale);
+
+			// Fade out near the end
+			if (progress > 0.7) {
+				marker.material.opacity = 0.7 * (1 - (progress - 0.7) / 0.3);
+			}
+
+			requestAnimationFrame(animateMarkedTile);
 		};
 
-		this.ui.updateMarkedTileStatus(
-			`Tile marked at ${Math.round(x)}, ${Math.round(z)}`
-		);
+		animateMarkedTile();
 	}
 
 	captureCube() {
-		if (!this.markedTile) return;
+		console.log('DEBUG - captureCube called');
 
-		// Check if there's a cube above the marked tile
-		const cubesToCapture = this.level.getCubesAtPosition(
-			this.markedTile.position.x,
-			this.markedTile.position.y
-		);
-
-		if (cubesToCapture.length > 0) {
-			// Process each cube at the marked position
-			cubesToCapture.forEach((cube) => {
-				if (cube.type === 'normal') {
-					// Capture normal cube (good)
-					this.captureNormalCube(cube);
-				} else if (cube.type === 'forbidden') {
-					// Capture forbidden cube (bad)
-					this.captureForbiddenCube(cube);
-				} else if (cube.type === 'advantage') {
-					// Capture advantage cube (special)
-					this.captureAdvantageCube(cube);
-				}
-			});
+		if (!this.gameStarted || this.gameOver || this.paused) {
+			console.log('DEBUG - Cannot capture cube: game not in active state');
+			return;
 		}
 
-		// Remove marked tile
-		this.scene.remove(this.markedTile.mesh);
-		this.markedTile = null;
-		this.ui.updateMarkedTileStatus('No tile marked');
+		const playerPos = this.player.getPosition();
+		const x = Math.round(playerPos.x);
+		const z = Math.round(playerPos.z);
+
+		console.log(`DEBUG - Attempting to capture cube at (${x}, ${z})`);
+
+		// Check if there's a marked tile at this position
+		const tile = this.level.platformTiles.find(
+			(t) => t.x === x && t.z === z && t.exists && t.marked
+		);
+
+		if (!tile) {
+			console.log('DEBUG - No marked tile at this position');
+			return;
+		}
+
+		// Find cubes at this position
+		const cubesAtPosition = this.level.getCubesAtPosition(x, z);
+
+		if (cubesAtPosition.length === 0) {
+			console.log('DEBUG - No cubes at this position');
+			return;
+		}
+
+		console.log(`DEBUG - Found ${cubesAtPosition.length} cubes to capture`);
+
+		// Capture each cube
+		cubesAtPosition.forEach((cube) => {
+			switch (cube.type) {
+				case 'normal':
+					this.captureNormalCube(cube);
+					break;
+				case 'forbidden':
+					this.captureForbiddenCube(cube);
+					break;
+				case 'advantage':
+					this.captureAdvantageCube(cube);
+					break;
+			}
+		});
+
+		// Unmark the tile
+		tile.marked = false;
 	}
 
 	captureNormalCube(cube) {
+		console.log('DEBUG - Capturing normal cube');
+
 		// Add score
 		this.score += 100;
 		this.ui.updateScore(this.score);
 
 		// Remove cube
-		this.level.removeCube(cube);
+		cube.destroy();
 
 		// Create capture effect
 		this.createCaptureEffect(cube.mesh.position);
+
+		// Update cubes left count
+		this.ui.updateCubesLeft(this.level.getRemainingCubes());
+
+		// Check if level is complete
+		if (this.level.isLevelComplete()) {
+			this.completeLevel();
+		}
 	}
 
 	captureForbiddenCube(cube) {
-		// Penalty for capturing forbidden cube
-		this.level.shrinkPlatform();
+		console.log('DEBUG - Capturing forbidden cube - penalty!');
+
+		// Penalty for capturing forbidden cube - lose a row of platform
+		this.level.removePlatformRows(0, 1);
+
+		// Visual effect
+		this.createCaptureEffect(cube.mesh.position, 0xff0000);
 
 		// Remove cube
-		this.level.removeCube(cube);
+		cube.destroy();
 
-		// Create capture effect (red color)
-		this.createCaptureEffect(cube.mesh.position, 0xff0000);
+		// Update cubes left count
+		this.ui.updateCubesLeft(this.level.getRemainingCubes());
 	}
 
 	captureAdvantageCube(cube) {
-		// Set as active advantage
-		this.activatedAdvantage = {
-			position: new THREE.Vector2(cube.mesh.position.x, cube.mesh.position.z),
-		};
+		console.log('DEBUG - Capturing advantage cube - special ability!');
 
 		// Add score
-		this.score += 50;
+		this.score += 300;
 		this.ui.updateScore(this.score);
 
-		// Remove cube
-		this.level.removeCube(cube);
+		// Store advantage for later activation
+		this.hasAdvantage = true;
 
-		// Create capture effect (green color)
+		// Visual effect
 		this.createCaptureEffect(cube.mesh.position, 0x00ff00);
+
+		// Remove cube
+		cube.destroy();
+
+		// Update cubes left count
+		this.ui.updateCubesLeft(this.level.getRemainingCubes());
+
+		// Show message about advantage
+		this.ui.updateMarkedTileStatus(
+			'Advantage cube captured! Press R to activate'
+		);
 	}
 
 	activateAdvantage() {
-		console.log(
-			'DEBUG - Advantage activated at position:',
-			this.activatedAdvantage.position
-		);
+		if (!this.hasAdvantage) {
+			console.log('DEBUG - No advantage available to activate');
+			return;
+		}
 
-		// Increase score
-		this.score += 100;
+		console.log('DEBUG - Activating advantage');
+
+		// Get player position
+		const playerPos = this.player.getPosition();
+
+		// Destroy all cubes in a radius around the player
+		this.level.destroyCubesInRadius(playerPos, 3);
+
+		// Create special effect
+		const effectGeometry = new THREE.RingGeometry(0.5, 3, 32);
+		const effectMaterial = new THREE.MeshBasicMaterial({
+			color: 0x00ff00,
+			transparent: true,
+			opacity: 0.7,
+			side: THREE.DoubleSide,
+		});
+
+		const effect = new THREE.Mesh(effectGeometry, effectMaterial);
+		effect.position.set(playerPos.x, 0.1, playerPos.z);
+		effect.rotation.x = Math.PI / 2; // Lay flat
+		this.scene.add(effect);
+
+		// Animate and remove
+		const startTime = this.clock.getElapsedTime();
+		const duration = 1.0;
+
+		const animateEffect = () => {
+			const elapsed = this.clock.getElapsedTime() - startTime;
+			const progress = elapsed / duration;
+
+			if (progress >= 1) {
+				this.scene.remove(effect);
+				effect.geometry.dispose();
+				effect.material.dispose();
+				return;
+			}
+
+			effect.scale.set(1 + progress, 1 + progress, 1);
+			effect.material.opacity = 0.7 * (1 - progress);
+
+			requestAnimationFrame(animateEffect);
+		};
+
+		animateEffect();
+
+		// Reset advantage
+		this.hasAdvantage = false;
 
 		// Update UI
-		this.ui.updateScore(this.score);
-
-		// Mark that an advantage was activated
-		this.activatedAdvantage = null;
-
-		// Create chain reaction - destroy nearby cubes
-		this.level.destroyCubesInRadius(this.activatedAdvantage.position, 2);
-	}
-
-	activateForbidden() {
-		console.log(
-			'DEBUG - Forbidden cube activated at position:',
-			this.activatedAdvantage.position
-		);
-
-		// Remove 3 rows of platform starting from the cube's position
-		this.level.removePlatformRows(this.activatedAdvantage.position.y, 3);
+		this.ui.updateCubesLeft(this.level.getRemainingCubes());
 	}
 
 	createCaptureEffect(position, color = 0x0099ff) {
@@ -501,16 +636,78 @@ export class Game {
 	}
 
 	startGame() {
-		console.log('DEBUG - Starting game');
-		this.score = 0;
-		this.currentLevel = 1;
-		this.gameOver = false;
-		this.paused = false;
+		console.log('DEBUG - startGame called');
 
-		// Clear existing level
+		if (this.gameStarted) {
+			console.log('DEBUG - Game already started, ignoring startGame call');
+			return;
+		}
+
+		console.log('DEBUG - Starting game');
+		this.gameStarted = true;
+		this.gameOver = false;
+		this.score = 0;
+		this.playCount++;
+
+		// Hide start screen and show game UI
+		console.log('DEBUG - Hiding start screen');
+		this.ui.hideStartScreen();
+		console.log('DEBUG - Showing game UI');
+		this.ui.showGameUI();
+
+		// Reset player position
+		console.log('DEBUG - Resetting player position');
+		this.player.resetPosition();
+
+		// Start first level
+		console.log('DEBUG - Starting level 1');
+		this.startLevel(1);
+
+		console.log('DEBUG - Game started successfully');
+	}
+
+	startLevel(levelNumber) {
+		console.log(`DEBUG - Starting level ${levelNumber}`);
+
+		this.settings.currentLevel = levelNumber;
+
+		// Clear any existing level
+		if (this.level) {
+			this.level.clearCubes();
+		}
+
+		// Update UI
+		this.ui.updateLevel(levelNumber);
+		this.ui.updateScore(this.score);
+
+		// Create initial cubes for this level
+		this.level.createInitialCubes();
+
+		console.log(`DEBUG - Level ${levelNumber} started`);
+	}
+
+	restart() {
+		console.log('DEBUG - Restarting game');
+
+		// Hide game over screen if it's visible
+		if (this.ui) {
+			this.ui.hideGameOverScreen();
+		}
+
+		// Clear scene except for essential elements
 		if (this.level) {
 			this.level.clearLevel();
 		}
+
+		// Reset game state
+		this.gameStarted = true;
+		this.gameOver = false;
+		this.score = 0;
+		this.currentLevel = 1;
+		this.paused = false;
+		this.markedTile = null;
+		this.activatedAdvantage = false;
+		this.hasAdvantage = false;
 
 		// Update UI
 		if (this.ui) {
@@ -519,47 +716,15 @@ export class Game {
 			this.ui.updateLives(3);
 		}
 
-		// Start first level
-		this.startLevel(this.currentLevel);
-	}
-
-	startLevel(levelNumber) {
-		console.log('DEBUG - Starting level', levelNumber);
-		// Reset state
-		this.markedTile = null;
-		this.activatedAdvantage = false;
-
-		// Configure level based on level number
-		this.settings.cubeSpeed = 1.0 + levelNumber * 0.2;
-		this.settings.initialCubeCount = 5 + levelNumber * 2;
-
-		// Generate level
-		if (this.level) {
-			this.level.generateLevel(levelNumber);
-		}
-
 		// Reset player position
 		if (this.player) {
 			this.player.resetPosition();
 		}
 
-		// Update UI
-		if (this.ui) {
-			this.ui.updateLevel(levelNumber);
-			if (this.level) {
-				this.ui.updateCubesLeft(this.level.getRemainingCubes());
-			}
-		}
+		// Start the game from level 1
+		this.startLevel(this.currentLevel);
 
-		console.log('DEBUG - Level started with settings:', {
-			cubeSpeed: this.settings.cubeSpeed,
-			initialCubeCount: this.settings.initialCubeCount,
-		});
-	}
-
-	restart() {
-		console.log('DEBUG - Restarting game');
-		this.startGame();
+		console.log('DEBUG - Game restarted successfully');
 	}
 
 	endGame() {
@@ -615,16 +780,17 @@ export class Game {
 	}
 
 	update(delta) {
-		if (this.paused || this.gameOver) return;
+		// Skip updates if game not started or is over
+		if (!this.gameStarted || this.gameOver) return;
+
+		// Update level (platform, cubes, etc)
+		if (this.level) {
+			this.level.update(delta);
+		}
 
 		// Update player
 		if (this.player) {
 			this.player.update(delta);
-		}
-
-		// Update level
-		if (this.level) {
-			this.level.update(delta);
 		}
 
 		// Update UI
@@ -632,52 +798,50 @@ export class Game {
 			this.ui.update();
 		}
 
-		// Update camera position if animation is active
-		if (this.cameraAnimation.active) {
-			this.updateCameraPosition(delta);
-		}
-
 		// Check for level completion
-		if (this.level.isLevelComplete()) {
+		if (this.level && this.level.isLevelComplete()) {
+			console.log('DEBUG - Level complete!');
 			this.nextLevel();
 		}
 
-		// Check for game over
-		if (this.level.isGameOver()) {
+		// Check for game over condition
+		if (this.level && this.level.isGameOver()) {
+			console.log('DEBUG - Game over!');
 			this.endGame();
-		}
-
-		// Update post-processing effects
-		if (this.composer) {
-			this.composer.render();
-		} else {
-			this.renderer.render(this.scene, this.camera);
 		}
 	}
 
 	updateCameraPosition(delta) {
-		// Update time counter
+		if (!this.cameraAnimation.active) {
+			// If animation is not active, use default position
+			if (this.cameraAnimation.basePosition) {
+				this.camera.position.copy(this.cameraAnimation.basePosition);
+				this.camera.lookAt(this.cameraAnimation.lookAtPosition);
+			}
+			return;
+		}
+
+		// Update time counter for animation
 		this.cameraAnimation.time += delta;
 
-		// Calculate new camera position using sine wave for smooth movement
-		const xPos =
+		// Calculate new camera position using sine wave for smooth side-to-side movement
+		const offset =
 			Math.sin(this.cameraAnimation.time * this.cameraAnimation.frequency) *
 			this.cameraAnimation.amplitude;
 
+		// Apply offset to base position
+		const newPosition = this.cameraAnimation.basePosition.clone();
+		newPosition.x += offset;
+
 		// Update camera position
-		this.camera.position.x = xPos;
+		this.camera.position.copy(newPosition);
 
-		// Adjust look-at position for more natural movement
-		// Camera always looks slightly ahead of the player
-		const lookAtZ = 5; // Fixed point ahead on the platform
-		this.camera.lookAt(xPos * 0.2, 0, lookAtZ);
+		// Also offset lookAt point slightly for more natural movement
+		const lookAtPoint = this.cameraAnimation.lookAtPosition.clone();
+		lookAtPoint.x += offset * 0.3; // Reduced offset for lookAt point
 
-		// Log camera position for debugging
-		console.log('DEBUG - Camera position:', {
-			x: this.camera.position.x.toFixed(2),
-			y: this.camera.position.y.toFixed(2),
-			z: this.camera.position.z.toFixed(2),
-		});
+		// Update camera target
+		this.camera.lookAt(lookAtPoint);
 	}
 
 	toggleCameraAnimation() {
@@ -689,16 +853,10 @@ export class Game {
 			this.cameraAnimation.active
 		);
 
-		// Reset camera position when turning off animation
-		if (!this.cameraAnimation.active) {
-			// Reset time counter
-			this.cameraAnimation.time = 0;
-
-			// Reset camera position
-			this.camera.position.set(0, 15, -15);
-			this.camera.lookAt(0, 0, 5);
-
-			console.log('DEBUG - Camera position reset');
+		// Reset camera position when disabling animation
+		if (!this.cameraAnimation.active && this.cameraAnimation.basePosition) {
+			this.camera.position.copy(this.cameraAnimation.basePosition);
+			this.camera.lookAt(this.cameraAnimation.lookAtPosition);
 		}
 	}
 
@@ -712,26 +870,110 @@ export class Game {
 	}
 
 	animate() {
+		// Use requestAnimationFrame for smooth animation
 		requestAnimationFrame(this.animate.bind(this));
 
-		// Get delta time
+		// Skip if game is paused
+		if (this.paused) {
+			console.log('DEBUG - Game is paused, skipping update');
+			return;
+		}
+
+		// Get time since last frame for consistent animations regardless of frame rate
 		const delta = this.clock.getDelta();
 
-		// Update game state
-		if (!this.paused) {
+		// Validate delta - safeguard against extremely large values (tab inactive, etc)
+		if (delta > 0.1) {
+			console.warn('Large delta detected:', delta);
+			return; // Skip this frame
+		}
+
+		// Always update camera for visual interest even if game hasn't started
+		this.updateCameraPosition(delta);
+
+		// Update game state only if game has started and isn't over
+		if (this.gameStarted && !this.gameOver) {
 			this.update(delta);
 		}
 
-		// Log debug info occasionally (not every frame to avoid console spam)
-		if (Math.random() < 0.01) {
-			console.log('DEBUG - Rendering scene:', {
-				cameraPosition: this.camera.position,
-				playerVisible: this.player?.mesh?.visible,
-				sceneChildrenCount: this.scene.children.length,
-			});
-		}
-
 		// Render scene
-		this.renderer.render(this.scene, this.camera);
+		if (this.composer) {
+			// Render with post-processing effects
+			this.composer.render();
+		} else {
+			// Standard rendering
+			this.renderer.render(this.scene, this.camera);
+		}
+	}
+
+	completeLevel() {
+		console.log('DEBUG - Level completed!');
+
+		// Show level complete message
+		this.ui.updateMarkedTileStatus('Level Complete!');
+
+		// Add level completion bonus
+		const levelBonus = this.currentLevel * 500;
+		this.score += levelBonus;
+		this.ui.updateScore(this.score);
+
+		// Create level complete effect
+		this.createLevelCompleteEffect();
+
+		// Pause briefly before starting next level
+		setTimeout(() => {
+			// Increment level
+			this.currentLevel++;
+
+			// Start next level
+			this.startLevel(this.currentLevel);
+
+			// Update UI
+			this.ui.updateLevel(this.currentLevel);
+			this.ui.updateMarkedTileStatus('Starting Level ' + this.currentLevel);
+		}, 2000);
+	}
+
+	createLevelCompleteEffect() {
+		// Create a flashy effect for level completion
+		const effectGeometry = new THREE.PlaneGeometry(
+			this.settings.stageWidth + 2,
+			this.settings.stageLength + 2
+		);
+		const effectMaterial = new THREE.MeshBasicMaterial({
+			color: 0xffff00,
+			transparent: true,
+			opacity: 0.3,
+			side: THREE.DoubleSide,
+		});
+
+		const effect = new THREE.Mesh(effectGeometry, effectMaterial);
+		effect.position.set(0, 0.1, this.settings.stageLength / 2);
+		effect.rotation.x = Math.PI / 2; // Lay flat
+		this.scene.add(effect);
+
+		// Animate and remove
+		const startTime = this.clock.getElapsedTime();
+		const duration = 2.0;
+
+		const animateEffect = () => {
+			const elapsed = this.clock.getElapsedTime() - startTime;
+			const progress = elapsed / duration;
+
+			if (progress >= 1) {
+				this.scene.remove(effect);
+				effect.geometry.dispose();
+				effect.material.dispose();
+				return;
+			}
+
+			// Pulse effect
+			const pulse = 0.3 + 0.5 * Math.sin(progress * Math.PI * 10);
+			effect.material.opacity = pulse;
+
+			requestAnimationFrame(animateEffect);
+		};
+
+		animateEffect();
 	}
 }

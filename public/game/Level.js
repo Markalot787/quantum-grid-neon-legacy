@@ -10,6 +10,11 @@ export class Level {
 		this.cubeSpawnInterval = 2; // seconds
 		this.platformTiles = []; // Track platform tiles for collision detection
 
+		// Wave management
+		this.waveIndex = 0;
+		this.wavesRemaining = 0;
+		this.isGeneratingWave = false;
+
 		console.log('DEBUG - Level constructor called with settings:', {
 			stageWidth: this.game.settings.stageWidth,
 			stageLength: this.game.settings.stageLength,
@@ -25,51 +30,56 @@ export class Level {
 	}
 
 	createPlatform() {
-		console.log('DEBUG - Creating platform');
+		console.log('DEBUG - Level createPlatform called');
 
-		// Get dimensions from game settings
 		const width = this.game.settings.stageWidth;
 		const length = this.game.settings.stageLength;
 
-		console.log('DEBUG - Platform dimensions:', { width, length });
+		console.log('Creating platform with dimensions:', { width, length });
 
-		// Create platform geometry
-		const geometry = new THREE.BoxGeometry(width, 0.5, length);
-
-		// Create platform material with improved visibility
-		const material = new THREE.MeshStandardMaterial({
-			color: 0x444444,
-			emissive: 0x111111,
-			emissiveIntensity: 0.5,
-			metalness: 0.7,
-			roughness: 0.3,
-			map: this.createGridTexture(width, length),
-		});
-
-		console.log('DEBUG - Platform material settings:', {
-			color: material.color.getHexString(),
-			emissive: material.emissive.getHexString(),
-			emissiveIntensity: material.emissiveIntensity,
-		});
-
-		// Create platform mesh
-		this.platform = new THREE.Mesh(geometry, material);
-		this.platform.position.set(0, -0.25, length / 2 - 0.5);
-		this.platform.receiveShadow = true;
-
-		// Add platform to scene
+		// Create a group to hold all platform tiles
+		this.platform = new THREE.Group();
 		this.game.scene.add(this.platform);
 
-		console.log(
-			'DEBUG - Platform created at position:',
-			this.platform.position
-		);
+		// Create individual platform tiles
+		this.platformTiles = [];
 
-		// Create platform tiles for collision detection
-		this.createPlatformTiles(width, length);
+		for (let x = -Math.floor(width / 2); x <= Math.floor(width / 2); x++) {
+			for (let z = 0; z < length; z++) {
+				// Create a cube for each tile
+				const geometry = new THREE.BoxGeometry(1, 0.2, 1);
+				const material = new THREE.MeshStandardMaterial({
+					color: 0x444444,
+					metalness: 0.3,
+					roughness: 0.7,
+				});
+
+				const tile = new THREE.Mesh(geometry, material);
+				tile.position.set(x, -0.1, z); // Position slightly below y=0
+				tile.receiveShadow = true;
+
+				// Add to platform group
+				this.platform.add(tile);
+
+				// Store reference to tile
+				this.platformTiles.push({
+					x: x,
+					z: z,
+					mesh: tile,
+					exists: true,
+					marked: false,
+				});
+			}
+		}
 
 		// Add grid lines for better visibility
 		this.addGridLines(width, length);
+
+		console.log(
+			'DEBUG - Platform created with',
+			this.platformTiles.length,
+			'tiles'
+		);
 	}
 
 	createGridTexture(width, length) {
@@ -150,36 +160,60 @@ export class Level {
 	}
 
 	isPlatformAt(x, z) {
-		// Check if platform exists at given position
+		// Check if there's a platform tile at the given coordinates
 		return this.platformTiles.some(
 			(tile) => tile.x === x && tile.z === z && tile.exists
 		);
 	}
 
-	removePlatformRows(startZ, count) {
-		console.log('DEBUG - Removing platform rows:', { startZ, count });
+	removePlatformRows(startZ, rowCount) {
+		// Implement forbidden cube effect to remove platform rows
+		console.log('DEBUG - Removing platform rows:', { startZ, rowCount });
 
-		// Find tiles in the specified rows
-		for (let i = 0; i < this.platformTiles.length; i++) {
-			const tile = this.platformTiles[i];
-			if (tile.z >= startZ && tile.z < startZ + count) {
-				tile.exists = false;
+		// Find the platform tiles to remove
+		const tilesToRemove = [];
+		const width = this.game.settings.stageWidth;
 
-				// Create visual effect for removed tile
-				this.createTileRemovalEffect(tile.x, tile.z);
+		// Calculate the starting row (round to nearest integer)
+		const startRow = Math.round(startZ);
+
+		// Identify tiles to remove
+		this.platformTiles.forEach((tile) => {
+			// Check if tile is in the affected rows
+			if (
+				tile.position.z >= startRow &&
+				tile.position.z < startRow + rowCount
+			) {
+				tilesToRemove.push(tile);
 			}
+		});
+
+		// Create visual effect for removal
+		tilesToRemove.forEach((tile) => {
+			// Create exploding effect
+			this.createTileRemovalEffect(tile.position);
+
+			// Remove from scene
+			this.platform.remove(tile);
+
+			// Remove from platformTiles array
+			const index = this.platformTiles.indexOf(tile);
+			if (index !== -1) {
+				this.platformTiles.splice(index, 1);
+			}
+		});
+
+		// Update the UI to show platform status
+		if (this.game.ui) {
+			this.game.ui.updatePlatformStatus(this.platformTiles.length);
 		}
 
-		// Check if player is on a removed tile
-		const playerPos = this.game.player.getPosition();
-		if (!this.isPlatformAt(playerPos.x, playerPos.z)) {
-			// Player falls off
-			this.game.endGame();
-		}
+		// Create visual warning
+		this.createLifeLossEffect();
 	}
 
-	createTileRemovalEffect(x, z) {
-		// Create particles for tile removal effect
+	createTileRemovalEffect(position) {
+		// Create particles for platform tile removal
 		const particleCount = 10;
 		const particleGeometry = new THREE.BoxGeometry(0.1, 0.1, 0.1);
 		const particleMaterial = new THREE.MeshBasicMaterial({
@@ -188,27 +222,28 @@ export class Level {
 			emissiveIntensity: 1.0,
 		});
 
+		// Create and animate particles
 		for (let i = 0; i < particleCount; i++) {
 			const particle = new THREE.Mesh(particleGeometry, particleMaterial);
 
-			// Set initial position at tile center
-			particle.position.set(x, 0.1, z);
-
-			// Set random velocity
-			const velocity = new THREE.Vector3(
-				(Math.random() - 0.5) * 0.1,
-				Math.random() * 0.1,
-				(Math.random() - 0.5) * 0.1
-			);
+			// Set initial position at tile position
+			particle.position.copy(position);
 
 			// Add to scene
 			this.game.scene.add(particle);
 
+			// Set random velocity
+			const velocity = new THREE.Vector3(
+				(Math.random() - 0.5) * 0.2,
+				Math.random() * 0.2,
+				(Math.random() - 0.5) * 0.2
+			);
+
 			// Animate particle
-			const duration = 0.5 + Math.random() * 0.5; // 0.5 to 1 second
+			const duration = 0.5 + Math.random() * 0.5;
 			const startTime = this.game.clock.getElapsedTime();
 
-			const updateParticle = () => {
+			const animateParticle = () => {
 				const elapsed = this.game.clock.getElapsedTime() - startTime;
 				const progress = elapsed / duration;
 
@@ -232,75 +267,176 @@ export class Level {
 				particle.material.opacity = 1 - progress;
 
 				// Continue animation
-				requestAnimationFrame(updateParticle);
+				requestAnimationFrame(animateParticle);
 			};
 
 			// Start animation
-			updateParticle();
+			animateParticle();
 		}
+	}
+
+	createLifeLossEffect() {
+		// Flash the screen red to indicate life loss
+		const overlay = document.createElement('div');
+		overlay.style.position = 'fixed';
+		overlay.style.top = '0';
+		overlay.style.left = '0';
+		overlay.style.width = '100%';
+		overlay.style.height = '100%';
+		overlay.style.backgroundColor = 'rgba(255, 0, 0, 0.3)';
+		overlay.style.zIndex = '1000';
+		overlay.style.pointerEvents = 'none'; // Don't block interaction
+
+		document.body.appendChild(overlay);
+
+		// Fade out and remove
+		setTimeout(() => {
+			overlay.style.transition = 'opacity 0.5s';
+			overlay.style.opacity = '0';
+			setTimeout(() => {
+				document.body.removeChild(overlay);
+			}, 500);
+		}, 100);
 	}
 
 	createInitialCubes() {
-		console.log('DEBUG - Creating initial cubes');
+		console.log('DEBUG - Level createInitialCubes called');
 
-		// Create initial cubes
-		const count = this.game.settings.initialCubeCount;
+		// Clear any existing cubes
+		this.clearCubes();
 
-		for (let i = 0; i < count; i++) {
-			this.spawnCube();
-		}
+		// Set up wave system
+		this.waveIndex = 0;
+		this.wavesRemaining = this.game.settings.currentLevel + 2; // More waves for higher levels
+
+		console.log(
+			`DEBUG - Setting up ${this.wavesRemaining} waves for level ${this.game.settings.currentLevel}`
+		);
+
+		// Generate first wave
+		this.generateWave();
 	}
 
-	spawnCube() {
-		// Get stage width
-		const stageWidth = this.game.settings.stageWidth;
-		const stageLength = this.game.settings.stageLength;
+	generateWave() {
+		console.log('DEBUG - Level generateWave called');
 
-		// Calculate random position
-		const halfWidth = Math.floor(stageWidth / 2);
-		const x = Math.floor(Math.random() * (stageWidth + 1)) - halfWidth;
-		const z = stageLength - 1; // Start at the far end of the platform
-
-		// Determine cube type
-		let type = 'normal';
-		const rand = Math.random();
-
-		if (rand < 0.1) {
-			type = 'forbidden'; // 10% chance for forbidden cube
-		} else if (rand < 0.2) {
-			type = 'advantage'; // 10% chance for advantage cube
+		if (this.wavesRemaining <= 0 || this.isGeneratingWave) {
+			console.log(
+				'DEBUG - Cannot generate wave: no waves remaining or already generating'
+			);
+			return;
 		}
 
-		// Create cube
-		const cube = new Cube(this.game, type, x, z);
-		this.cubes.push(cube);
+		this.isGeneratingWave = true;
+		this.waveIndex++;
+		this.wavesRemaining--;
 
-		console.log('DEBUG - Spawned cube:', { type, position: { x, z } });
+		console.log(
+			`DEBUG - Generating wave ${this.waveIndex}, ${this.wavesRemaining} remaining`
+		);
 
-		return cube;
+		const width = this.game.settings.stageWidth;
+		const count = Math.min(
+			width,
+			this.game.settings.initialCubeCount + Math.floor(this.waveIndex / 2)
+		);
+
+		// Calculate number of each cube type (70% normal, 20% forbidden, 10% advantage)
+		const normalCount = Math.max(1, Math.floor(count * 0.7));
+		const forbiddenCount = Math.max(1, Math.floor(count * 0.2));
+		const advantageCount = Math.floor(count * 0.1);
+
+		console.log('DEBUG - Cube counts for wave:', {
+			normal: normalCount,
+			forbidden: forbiddenCount,
+			advantage: advantageCount,
+			total: normalCount + forbiddenCount + advantageCount,
+		});
+
+		// Generate positions across platform width
+		const halfWidth = Math.floor(width / 2);
+		const positions = [];
+		for (let x = -halfWidth; x <= halfWidth; x++) positions.push(x);
+
+		// Shuffle positions for random placement
+		for (let i = positions.length - 1; i > 0; i--) {
+			const j = Math.floor(Math.random() * (i + 1));
+			[positions[i], positions[j]] = [positions[j], positions[i]];
+		}
+
+		// Start cubes beyond the platform
+		const startZ = this.game.settings.stageLength + 2;
+		let createdCount = 0;
+
+		// Create cubes in a row
+		for (let i = 0; i < normalCount && createdCount < positions.length; i++) {
+			const cube = new Cube(
+				this.game,
+				'normal',
+				positions[createdCount],
+				startZ
+			);
+			this.cubes.push(cube);
+			createdCount++;
+		}
+
+		for (
+			let i = 0;
+			i < forbiddenCount && createdCount < positions.length;
+			i++
+		) {
+			const cube = new Cube(
+				this.game,
+				'forbidden',
+				positions[createdCount],
+				startZ
+			);
+			this.cubes.push(cube);
+			createdCount++;
+		}
+
+		for (
+			let i = 0;
+			i < advantageCount && createdCount < positions.length;
+			i++
+		) {
+			const cube = new Cube(
+				this.game,
+				'advantage',
+				positions[createdCount],
+				startZ
+			);
+			this.cubes.push(cube);
+			createdCount++;
+		}
+
+		console.log(
+			`DEBUG - Wave ${this.waveIndex} created with ${this.cubes.length} cubes`
+		);
+		this.isGeneratingWave = false;
+	}
+
+	clearCubes() {
+		// Remove all cubes
+		while (this.cubes.length > 0) {
+			this.removeCube(this.cubes[0]);
+		}
 	}
 
 	update(delta) {
-		// Update cube spawn timer
-		this.cubeSpawnTimer += delta;
-
-		// Spawn new cube if timer exceeds interval
-		if (this.cubeSpawnTimer >= this.cubeSpawnInterval) {
-			this.spawnCube();
-			this.cubeSpawnTimer = 0;
+		// Update all cubes
+		for (let i = this.cubes.length - 1; i >= 0; i--) {
+			this.cubes[i].update(delta);
 		}
 
-		// Update cubes
-		for (let i = this.cubes.length - 1; i >= 0; i--) {
-			const cube = this.cubes[i];
-
-			// Update cube
-			cube.update(delta);
-
-			// Remove destroyed cubes
-			if (cube.destroyed) {
-				this.cubes.splice(i, 1);
-			}
+		// Generate new wave if no cubes remain and we have waves left
+		if (
+			this.cubes.length === 0 &&
+			this.wavesRemaining > 0 &&
+			!this.isGeneratingWave
+		) {
+			console.log('DEBUG - No cubes remaining, generating new wave');
+			this.generateWave();
 		}
 	}
 
@@ -334,6 +470,48 @@ export class Level {
 
 	getRemainingCubes() {
 		return this.cubes.length;
+	}
+
+	getCubesAtPosition(x, z) {
+		// Find cubes at the specified position with some tolerance
+		const tolerance = 0.5; // Allow for slight positioning differences
+
+		return this.cubes.filter((cube) => {
+			const dx = Math.abs(cube.position.x - x);
+			const dz = Math.abs(cube.position.z - z);
+			return dx <= tolerance && dz <= tolerance;
+		});
+	}
+
+	removeCube(cube) {
+		// Find the cube in the array
+		const index = this.cubes.findIndex((c) => c === cube);
+
+		// If found, remove it
+		if (index !== -1) {
+			// Call destroy method if it exists
+			if (typeof cube.destroy === 'function') {
+				cube.destroy();
+			} else {
+				// Otherwise just remove from scene
+				if (cube.mesh) {
+					this.game.scene.remove(cube.mesh);
+				}
+			}
+
+			// Remove from array
+			this.cubes.splice(index, 1);
+
+			console.log(
+				'DEBUG - Cube removed from level. Remaining:',
+				this.cubes.length
+			);
+
+			// Update UI
+			if (this.game.ui) {
+				this.game.ui.updateCubesLeft(this.getRemainingCubes());
+			}
+		}
 	}
 
 	isLevelComplete() {
